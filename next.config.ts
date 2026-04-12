@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  /* config options here */
-};
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  port: process.env.PORT || 3001,
+}
+
+module.exports = nextConfig
 
 export default nextConfig;
