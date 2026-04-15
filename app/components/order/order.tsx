@@ -1,8 +1,13 @@
 'use client'
 
-const Order = () => {
+import type { OrderCardProps } from '@/types';
+
+const Order = ({setMode}: OrderCardProps) => {
     return (
-        <button className="flex flex-col gap-2 bg-regal-gris p-5 rounded-xl hover:bg-regal-gris-hover">
+        <button className="flex flex-col gap-2 bg-regal-gris p-5 rounded-xl hover:bg-regal-gris-hover" onClick={() => {
+            setMode("ver");
+            
+        }}  >
             <div className="flex justify-between">
                 <h1>#999</h1>
                 <h3>Esteban</h3>
