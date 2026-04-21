@@ -6,13 +6,7 @@ import EmptyOrder from './emptyOrder';
 import ViewOrder from './viewOrder';
 import type { OrderSectionProps } from '@/types';
 
-const OrderSection = ({ setMode, mode }: OrderSectionProps) => {
-  
-
-  const handleReset = () => {
-    setMode('default');
-  };
-
+const OrderSection = ({ setMode, mode, selectedOrderId }: OrderSectionProps) => {
   const renderContent = () => {
     switch (mode) {
       case 'crear':
@@ -20,7 +14,7 @@ const OrderSection = ({ setMode, mode }: OrderSectionProps) => {
       case 'editar':
         return <EditOrderForm setMode={setMode} mode={mode} />;
       case 'ver':
-        return <ViewOrder setMode={setMode} mode={mode} />
+        return <ViewOrder selectedOrderId={selectedOrderId} setMode={setMode} mode={mode} />
       case "default":
       default:
         return <EmptyOrder setMode={setMode} mode={mode} />;

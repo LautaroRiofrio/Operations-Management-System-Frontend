@@ -1,10 +1,16 @@
 import type { NextConfig } from "next";
 
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  port: process.env.PORT || 3001,
-}
+const backendApiUrl = (process.env.API_URL ?? "http://localhost:3000/api").replace(/\/+$/, "");
 
-module.exports = nextConfig
+const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendApiUrl}/:path*`,
+      },
+    ];
+  },
+};
 
 export default nextConfig;
