@@ -7,7 +7,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="h-dvh overflow-hidden">
         <Providers>
-          <div className="flex h-full flex-col overflow-hidden">
+          <div className="flex h-screen flex-col overflow-hidden">
             <Menu />
             <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
           </div>

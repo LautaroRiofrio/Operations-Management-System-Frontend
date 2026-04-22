@@ -25,9 +25,9 @@ export default function ReceptionSection() {
   };
 
   return (
-    <div className="grid h-full w-full min-h-0 grid-cols-[40%_60%] overflow-hidden">
-      <section className="min-h-0 overflow-hidden border-r border-black/10 bg-white">
-        <div className="flex h-full min-h-0 flex-col gap-5 p-5">
+    <div className="grid h-full w-full min-h-0 grid-cols-[40%_60%] ">
+      <section className="min-h-0 h-full border-r border-black/10 bg-white">
+        <div className="flex min-h-0 flex-col gap-5 p-5">
           <div className="flex gap-2">
             <div className="flex-1 rounded-xl bg-blue-200 px-5 py-2">
               <input

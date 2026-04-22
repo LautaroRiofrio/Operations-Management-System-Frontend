@@ -22,14 +22,12 @@ const Products = ({
   });
 
   return (
-    <div className="flex min-h-0 flex-col gap-5 rounded-3xl bg-regal-gris px-5 py-5">
+    <div className="flex flex-col gap-5 min-h-0 h-full overflow-hidden rounded-3xl bg-regal-gris px-5 py-5 ">
+      {/* titulo */}
       <div>
         <h2 className="text-2xl font-bold text-white">Productos</h2>
-        <p className="text-sm text-white/70">
-          Catálogo cargado desde la API con filtro por categoría.
-        </p>
       </div>
-
+      {/* slider */}
       <div className="flex gap-2 overflow-x-auto pb-1">
         <button
           type="button"
@@ -59,7 +57,7 @@ const Products = ({
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+      <div className="flex flex-col flex-1 min-h-0 max-h-full  overflow-y-auto pr-1">
         {loading ? (
           <div className="rounded-2xl bg-black/15 p-4 text-sm text-white/80">
             Cargando productos y categorías...
