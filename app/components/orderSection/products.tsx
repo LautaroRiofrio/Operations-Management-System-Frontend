@@ -22,7 +22,7 @@ const Products = ({
   });
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-5 rounded-3xl bg-regal-gris px-5 py-5">
+    <div className="flex min-h-0 flex-col gap-5 rounded-3xl bg-regal-gris px-5 py-5">
       <div>
         <h2 className="text-2xl font-bold text-white">Productos</h2>
         <p className="text-sm text-white/70">
@@ -86,7 +86,7 @@ const Products = ({
         ) : null}
 
         {!loading && !error && visibleProducts.length > 0 ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 pb-2">
             {visibleProducts.map((product) => (
               <Product key={product.id} onAdd={onAddProduct} product={product} />
             ))}

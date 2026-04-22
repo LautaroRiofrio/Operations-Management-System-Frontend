@@ -35,7 +35,6 @@ export async function createOrderWorkflow(input: OrderMutationInput) {
     try {
       await deleteOrderRecord(orderId);
     } catch {
-      // Best-effort rollback.
     }
 
     throw error;
@@ -98,10 +97,8 @@ export async function updateOrderWorkflow(
         });
       }
 
-      // Newly created lines cannot be rolled back reliably without a returned line id.
       void createdLines;
     } catch {
-      // Best-effort rollback.
     }
 
     throw error;

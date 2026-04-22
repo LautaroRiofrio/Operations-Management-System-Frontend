@@ -22,7 +22,7 @@ const OrderSection = ({ setMode, mode, selectedOrderId }: OrderSectionProps) => 
   };
 
   return (
-    <section className="min-h-0 overflow-hidden bg-neutral-100">
+    <section className="h-full max-h-full min-h-0 overflow-hidden bg-neutral-100">
       {renderContent()}
     </section>
   );

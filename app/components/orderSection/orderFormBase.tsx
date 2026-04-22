@@ -133,7 +133,7 @@ export default function OrderFormBase({
 
   return (
     <>
-      <div className="grid h-full min-h-0 grid-cols-2 gap-5 p-5">
+      <div className="grid h-full max-h-full min-h-0 grid-cols-2 gap-5 overflow-hidden p-5">
         <div className="flex min-h-0 flex-col gap-8 overflow-hidden">
           <div className="flex items-start justify-between gap-4">
             <div>
@@ -222,7 +222,7 @@ export default function OrderFormBase({
           </div>
         </div>
 
-        <div className="min-h-0 rounded-3xl bg-white p-5 shadow-sm">
+        <div className="min-h-0 overflow-hidden rounded-3xl bg-white p-5 shadow-sm">
           <div className="flex h-full min-h-0 flex-col gap-5">
             <div>
               <h3 className="text-2xl font-bold text-neutral-900">Resumen</h3>

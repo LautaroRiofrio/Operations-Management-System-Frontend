@@ -168,6 +168,7 @@ export function buildLineDiff(
 ): OrderLineDiff {
   const previousByLineId = new Map<number, OrderMutationInput['lines'][number]>();
   const previousByProductId = new Map<number, OrderMutationInput['lines'][number]>();
+  const reusedPreviousLineIds = new Set<number>();
 
   for (const line of input.previous.lines) {
     if (line.lineId) {
@@ -181,10 +182,6 @@ export function buildLineDiff(
   const update: OrderLineDiff['update'] = [];
 
   for (const line of input.current.lines) {
-    if (line.lineId) {
-      nextLineIds.add(line.lineId);
-    }
-
     const nextPayload = {
       orderId,
       productId: line.productId,
@@ -196,9 +193,15 @@ export function buildLineDiff(
       : previousByProductId.get(line.productId);
 
     if (!previousLine || !previousLine.lineId) {
+      if (line.lineId) {
+        nextLineIds.add(line.lineId);
+      }
       create.push(nextPayload);
       continue;
     }
+
+    nextLineIds.add(previousLine.lineId);
+    reusedPreviousLineIds.add(previousLine.lineId);
 
     if (
       previousLine.productId !== line.productId ||
@@ -217,7 +220,12 @@ export function buildLineDiff(
   }
 
   const remove = input.previous.lines
-    .filter((line) => line.lineId && !nextLineIds.has(line.lineId))
+    .filter(
+      (line) =>
+        line.lineId &&
+        !nextLineIds.has(line.lineId) &&
+        !reusedPreviousLineIds.has(line.lineId),
+    )
     .map((line) => line.lineId as number);
 
   return { create, remove, update };

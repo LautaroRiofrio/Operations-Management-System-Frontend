@@ -1,4 +1,3 @@
-// Rutas derivadas del OpenAPI provisto para las entidades administrativas.
 export const administrativePaths = {
   categories: {
     collection: '/category',
