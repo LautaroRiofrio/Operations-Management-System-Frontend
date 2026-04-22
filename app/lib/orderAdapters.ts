@@ -3,6 +3,12 @@ import type { OrderDetail, OrderListItem, RawOrderRecord } from '@/types';
 const ORDER_ID_KEYS = ['id', 'orderId', 'pedidoId'];
 const ORDER_NUMBER_KEYS = ['orderNumber', 'order_number', 'number', 'numero', 'code'];
 const CUSTOMER_NAME_KEYS = [
+  'nombre_cliente',
+  'cliente.nombre',
+  'customer.name',
+  'customer.nombre',
+  'client.name',
+  'client.nombre',
   'customerName',
   'clientName',
   'cliente',
@@ -49,7 +55,12 @@ function getValueByPath(source: unknown, path: string): unknown {
 function pickFirst(source: RawOrderRecord, keys: string[]): unknown {
   for (const key of keys) {
     const directValue = source[key];
-    if (directValue !== undefined && directValue !== null && directValue !== '') {
+    if (
+      directValue !== undefined &&
+      directValue !== null &&
+      directValue !== '' &&
+      !isRecord(directValue)
+    ) {
       return directValue;
     }
 

@@ -16,6 +16,20 @@ export function useOrdersByState(state: number): UseOrdersByStateResult {
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    const handleOrdersChanged = () => {
+      cacheRef.current.delete(state);
+      setRefreshTick((currentValue) => currentValue + 1);
+    };
+
+    window.addEventListener('orders:changed', handleOrdersChanged);
+
+    return () => {
+      window.removeEventListener('orders:changed', handleOrdersChanged);
+    };
+  }, [state]);
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +74,7 @@ export function useOrdersByState(state: number): UseOrdersByStateResult {
     return () => {
       cancelled = true;
     };
-  }, [state]);
+  }, [refreshTick, state]);
 
   return { error, loading, orders };
 }

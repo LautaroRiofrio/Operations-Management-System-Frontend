@@ -1,6 +1,4 @@
 'use client'
-
-import Image from 'next/image';
 import type { OrderSectionProps } from '@/types';
 import { useOrderDetails } from '@/app/hooks/useOrderDetails';
 

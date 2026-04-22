@@ -12,7 +12,7 @@ const OrderSection = ({ setMode, mode, selectedOrderId }: OrderSectionProps) => 
       case 'crear':
         return <OrderForm setMode={setMode} mode={mode} />;
       case 'editar':
-        return <EditOrderForm setMode={setMode} mode={mode} />;
+        return <EditOrderForm selectedOrderId={selectedOrderId} setMode={setMode} mode={mode} />;
       case 'ver':
         return <ViewOrder selectedOrderId={selectedOrderId} setMode={setMode} mode={mode} />
       case "default":

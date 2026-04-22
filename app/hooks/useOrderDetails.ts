@@ -16,6 +16,24 @@ export function useOrderDetails(orderId: number | null): UseOrderDetailsResult {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    const handleOrdersChanged = () => {
+      if (orderId === null) {
+        return;
+      }
+
+      cacheRef.current.delete(orderId);
+      setRefreshTick((currentValue) => currentValue + 1);
+    };
+
+    window.addEventListener('orders:changed', handleOrdersChanged);
+
+    return () => {
+      window.removeEventListener('orders:changed', handleOrdersChanged);
+    };
+  }, [orderId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,12 +84,12 @@ export function useOrderDetails(orderId: number | null): UseOrderDetailsResult {
       }
     }
 
-    fetchOrder();
+    void fetchOrder();
 
     return () => {
       cancelled = true;
     };
-  }, [orderId]);
+  }, [orderId, refreshTick]);
 
   return { error, loading, order };
 }
