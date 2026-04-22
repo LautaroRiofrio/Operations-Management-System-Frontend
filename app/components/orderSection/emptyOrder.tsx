@@ -4,7 +4,7 @@ import type { OrderSectionProps } from '@/types';
 
 const EmptyOrder = ({ setMode }: OrderSectionProps) => {
   return (
-    <div className="flex h-full items-center justify-center p-6">
+    <div className="flex w-full h-full items-center justify-center p-6 border">
       <button
         type="button"
         onClick={() => {setMode("crear")}}
