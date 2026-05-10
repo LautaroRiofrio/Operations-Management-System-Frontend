@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react';
 import Product from './product';
 import type { OrderProductCatalogProps } from '@/types';
 
@@ -13,12 +14,23 @@ const Products = ({
   selectedCategoryId,
   setSelectedCategoryId,
 }: OrderProductCatalogProps) => {
+  useEffect(() => {
+    if (selectedCategoryId === 'all') {
+      return;
+    }
+
+    const categoryExists = categories.some((category) => category.id === selectedCategoryId);
+    if (!categoryExists) {
+      setSelectedCategoryId('all');
+    }
+  }, [categories, selectedCategoryId, setSelectedCategoryId]);
+
   const visibleProducts = products.filter((product) => {
     if (selectedCategoryId === 'all') {
       return true;
     }
 
-    return product.id_categoria === selectedCategoryId;
+    return Number(product.id_categoria) === Number(selectedCategoryId);
   });
 
   return (

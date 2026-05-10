@@ -3,21 +3,22 @@
 import { useState } from 'react';
 import Order from '@/app/components/order/order';
 import OrderSection from '@/app/components/orderSection/orderSection';
+import { useCrudResource } from '@/app/hooks/useCrudResource';
 import { useOrdersByState } from '@/app/hooks/useOrdersByState';
+import { listStates } from '@/app/services/adminServices';
 import type { OrderMode } from '@/types';
 
-const ORDER_STATES = [
-  { id: 1, label: 'Pendiente' },
-  { id: 2, label: 'En Produccion' },
-  { id: 3, label: 'Listo' },
-  { id: 4, label: 'En Camino' },
-];
+const DEFAULT_NEW_ORDER_STATE_ID = 1;
 
 export default function ReceptionSection() {
   const [mode, setMode] = useState<OrderMode>('default');
-  const [selectedState, setSelectedState] = useState(1);
+  const statesResource = useCrudResource(listStates, 'No se pudieron cargar los estados.');
+  const states = statesResource.items.filter((state) => !state.es_final);
+  const initialStateId = states[0]?.id ?? null;
+  const [selectedStateOverride, setSelectedStateOverride] = useState<number | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const { orders, loading, error } = useOrdersByState(selectedState);
+  const resolvedSelectedState = selectedStateOverride ?? initialStateId ?? 0;
+  const { orders, loading, error } = useOrdersByState(resolvedSelectedState);
 
   const handleSelectOrder = (orderId: number) => {
     setSelectedOrderId(orderId);
@@ -39,24 +40,34 @@ export default function ReceptionSection() {
           </div>
 
           <div className="flex gap-2 rounded-lg bg-gray-200 px-5 py-2">
-            {ORDER_STATES.map((state) => (
-              <button
-                key={state.id}
-                type="button"
-                className={`flex-1 rounded-sm p-1 transition-colors ${
-                  selectedState === state.id
-                    ? 'bg-regal-gris-hover text-white'
-                    : 'bg-regal-gris hover:bg-regal-gris-hover hover:text-white'
-                }`}
-                onClick={() => {
-                  setSelectedState(state.id);
-                  setSelectedOrderId(null);
-                  setMode('default');
-                }}
-              >
-                {state.label}
-              </button>
-            ))}
+            {statesResource.loading && states.length === 0 ? (
+              <div className="text-sm text-neutral-600">Cargando estados...</div>
+            ) : null}
+
+            {statesResource.error ? (
+              <div className="text-sm text-red-600">{statesResource.error}</div>
+            ) : null}
+
+            {!statesResource.loading && !statesResource.error
+              ? states.map((state) => (
+                  <button
+                    key={state.id}
+                    type="button"
+                    className={`flex-1 rounded-sm p-1 transition-colors ${
+                      resolvedSelectedState === state.id
+                        ? 'bg-regal-gris-hover text-white'
+                        : 'bg-regal-gris hover:bg-regal-gris-hover hover:text-white'
+                    }`}
+                    onClick={() => {
+                      setSelectedStateOverride(state.id);
+                      setSelectedOrderId(null);
+                      setMode('default');
+                    }}
+                  >
+                    {state.nombre}
+                  </button>
+                ))
+              : null}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto pr-2">
@@ -94,7 +105,12 @@ export default function ReceptionSection() {
         </div>
       </section>
 
-      <OrderSection mode={mode} selectedOrderId={selectedOrderId} setMode={setMode} />
+      <OrderSection
+        defaultStateId={DEFAULT_NEW_ORDER_STATE_ID}
+        mode={mode}
+        selectedOrderId={selectedOrderId}
+        setMode={setMode}
+      />
     </div>
   );
 }

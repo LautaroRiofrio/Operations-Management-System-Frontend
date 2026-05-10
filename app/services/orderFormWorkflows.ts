@@ -18,7 +18,9 @@ import type { OrderMutationInput } from '@/types';
 export async function createOrderWorkflow(input: OrderMutationInput) {
   const orderId = await createOrderRecord({
     customerId: input.customerId,
+    estimatedDelivery: input.estimatedDelivery,
     paymentMethod: input.paymentMethod,
+    stateId: input.stateId,
   });
 
   try {
@@ -47,7 +49,9 @@ export async function updateOrderWorkflow(
 ) {
   await updateOrderRecord(orderId, {
     customerId: input.current.customerId,
+    estimatedDelivery: input.current.estimatedDelivery,
     paymentMethod: input.current.paymentMethod,
+    stateId: input.current.stateId,
   });
 
   const diff = buildLineDiff(orderId, input);
@@ -56,7 +60,9 @@ export async function updateOrderWorkflow(
   );
   const previousOrder = {
     customerId: input.previous.customerId,
+    estimatedDelivery: input.previous.estimatedDelivery,
     paymentMethod: input.previous.paymentMethod,
+    stateId: input.previous.stateId,
   };
   const createdLines: OrderLinePayload[] = [];
 

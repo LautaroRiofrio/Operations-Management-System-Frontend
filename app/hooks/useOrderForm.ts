@@ -30,7 +30,9 @@ type UseOrderFormResult = {
   }) => void;
   removeLine: (productId: number) => void;
   setCustomer: (customer: OrderCustomerOption | null) => void;
+  setEstimatedDelivery: (estimatedDelivery: string) => void;
   setPaymentMethod: (paymentMethod: string) => void;
+  setStateId: (stateId: number | null) => void;
   submit: () => Promise<boolean>;
   submitError: string | null;
   submitSuccess: string | null;
@@ -53,13 +55,15 @@ function buildMutationInput(values: OrderFormValues): OrderMutationInput | null 
       quantity: line.quantity,
     }));
 
-  if (!values.paymentMethod || lines.length === 0) {
+  if (!values.paymentMethod || !values.estimatedDelivery || !values.stateId || lines.length === 0) {
     return null;
   }
 
   return {
     customerId: values.customer.id,
+    estimatedDelivery: values.estimatedDelivery,
     paymentMethod: values.paymentMethod,
+    stateId: values.stateId,
     lines,
   };
 }
@@ -106,6 +110,20 @@ export function useOrderForm({
     setValues((currentValues) => ({
       ...currentValues,
       paymentMethod,
+    }));
+  };
+
+  const setStateId = (stateId: number | null) => {
+    setValues((currentValues) => ({
+      ...currentValues,
+      stateId,
+    }));
+  };
+
+  const setEstimatedDelivery = (estimatedDelivery: string) => {
+    setValues((currentValues) => ({
+      ...currentValues,
+      estimatedDelivery,
     }));
   };
 
@@ -170,7 +188,7 @@ export function useOrderForm({
 
     if (!mutationInput) {
       setSubmitSuccess(null);
-      setSubmitError('Completa cliente, metodo de pago y al menos un producto.');
+      setSubmitError('Completa cliente, entrega estimada, metodo de pago y al menos un producto.');
       return false;
     }
 
@@ -240,7 +258,9 @@ export function useOrderForm({
     addProduct,
     removeLine,
     setCustomer,
+    setEstimatedDelivery,
     setPaymentMethod,
+    setStateId,
     submit,
     submitError,
     submitSuccess,

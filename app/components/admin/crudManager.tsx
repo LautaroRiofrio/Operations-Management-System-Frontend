@@ -13,8 +13,9 @@ type CrudField = {
   name: string;
   placeholder?: string;
   required?: boolean;
+  rows?: number;
   step?: string;
-  type?: 'number' | 'select' | 'text';
+  type?: 'number' | 'select' | 'text' | 'textarea';
   options?: SelectOption[];
 };
 
@@ -69,11 +70,13 @@ export default function CrudManager<TItem>({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const resetForm = () => {
     setEditingId(null);
     setFormValues(buildEmptyValues(fields));
     setSubmitError(null);
+    setIsModalOpen(false);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -102,6 +105,14 @@ export default function CrudManager<TItem>({
     setEditingId(getItemId(item));
     setFormValues(getFormValues(item));
     setSubmitError(null);
+    setIsModalOpen(true);
+  };
+
+  const handleCreateClick = () => {
+    setEditingId(null);
+    setFormValues(buildEmptyValues(fields));
+    setSubmitError(null);
+    setIsModalOpen(true);
   };
 
   const handleDelete = async (item: TItem) => {
@@ -130,85 +141,21 @@ export default function CrudManager<TItem>({
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-5 lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
-      <section className="overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
-        <div className="border-b border-black/10 px-5 py-4">
-          <p className="text-sm text-neutral-500">{subtitle}</p>
-          <h2 className="text-2xl font-semibold text-neutral-900">
-            {editingId === null ? `Nueva ${title.toLowerCase()}` : `Editar ${title.toLowerCase()}`}
-          </h2>
-        </div>
-
-        <form className="flex h-full flex-col gap-4 p-5" onSubmit={handleSubmit}>
-          {fields.map((field) => (
-            <label key={field.name} className="flex flex-col gap-2 text-sm font-medium text-neutral-700">
-              {field.label}
-              {field.type === 'select' ? (
-                <select
-                  required={field.required}
-                  className="rounded-xl border border-black/10 bg-white px-4 py-3 outline-none transition focus:border-black"
-                  value={formValues[field.name] ?? ''}
-                  onChange={(event) =>
-                    setFormValues((currentValues) => ({
-                      ...currentValues,
-                      [field.name]: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Seleccionar...</option>
-                  {field.options?.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <input
-                  required={field.required}
-                  type={field.type ?? 'text'}
-                  step={field.step}
-                  placeholder={field.placeholder}
-                  className="rounded-xl border border-black/10 bg-white px-4 py-3 outline-none transition focus:border-black"
-                  value={formValues[field.name] ?? ''}
-                  onChange={(event) =>
-                    setFormValues((currentValues) => ({
-                      ...currentValues,
-                      [field.name]: event.target.value,
-                    }))
-                  }
-                />
-              )}
-            </label>
-          ))}
-
-          {submitError ? (
-            <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{submitError}</div>
-          ) : null}
-
-          <div className="mt-auto flex gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 rounded-xl bg-neutral-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:bg-neutral-400"
-            >
-              {isSubmitting ? 'Guardando...' : editingId === null ? 'Crear' : 'Actualizar'}
-            </button>
-
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded-xl border border-black/10 px-4 py-3 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
-            >
-              Limpiar
-            </button>
-          </div>
-        </form>
-      </section>
-
+    <>
       <section className="min-h-0 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
-        <div className="border-b border-black/10 px-5 py-4">
-          <p className="text-sm text-neutral-500">{subtitle}</p>
-          <h2 className="text-2xl font-semibold text-neutral-900">Listado</h2>
+        <div className="flex items-center justify-between gap-4 border-b border-black/10 px-5 py-4">
+          <div>
+            <p className="text-sm text-neutral-500">{subtitle}</p>
+            <h2 className="text-2xl font-semibold text-neutral-900">Listado</h2>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleCreateClick}
+            className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-neutral-700"
+          >
+            Crear {title.toLowerCase()}
+          </button>
         </div>
 
         <div className="min-h-0 overflow-auto">
@@ -272,6 +219,102 @@ export default function CrudManager<TItem>({
           ) : null}
         </div>
       </section>
-    </div>
+
+      {isModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-6">
+          <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
+            <div className="border-b border-black/10 px-6 py-5">
+              <p className="text-sm text-neutral-500">{subtitle}</p>
+              <h2 className="text-2xl font-semibold text-neutral-900">
+                {editingId === null ? `Nueva ${title.toLowerCase()}` : `Editar ${title.toLowerCase()}`}
+              </h2>
+            </div>
+
+            <form className="flex max-h-[80vh] flex-col gap-4 overflow-y-auto p-6" onSubmit={handleSubmit}>
+              {fields.map((field) => (
+                <label key={field.name} className="flex flex-col gap-2 text-sm font-medium text-neutral-700">
+                  {field.label}
+                  {field.type === 'select' ? (
+                    <select
+                      required={field.required}
+                      className="rounded-xl border border-black/10 bg-white px-4 py-3 outline-none transition focus:border-black"
+                      value={formValues[field.name] ?? ''}
+                      onChange={(event) =>
+                        setFormValues((currentValues) => ({
+                          ...currentValues,
+                          [field.name]: event.target.value,
+                        }))
+                      }
+                    >
+                      <option value="">Seleccionar...</option>
+                      {field.options?.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : field.type === 'textarea' ? (
+                    <textarea
+                      required={field.required}
+                      rows={field.rows ?? 5}
+                      placeholder={field.placeholder}
+                      className="rounded-xl border border-black/10 bg-white px-4 py-3 outline-none transition focus:border-black"
+                      value={formValues[field.name] ?? ''}
+                      onChange={(event) =>
+                        setFormValues((currentValues) => ({
+                          ...currentValues,
+                          [field.name]: event.target.value,
+                        }))
+                      }
+                    />
+                  ) : (
+                    <input
+                      required={field.required}
+                      type={field.type ?? 'text'}
+                      step={field.step}
+                      placeholder={field.placeholder}
+                      className="rounded-xl border border-black/10 bg-white px-4 py-3 outline-none transition focus:border-black"
+                      value={formValues[field.name] ?? ''}
+                      onChange={(event) =>
+                        setFormValues((currentValues) => ({
+                          ...currentValues,
+                          [field.name]: event.target.value,
+                        }))
+                      }
+                    />
+                  )}
+                </label>
+              ))}
+
+              {submitError ? (
+                <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{submitError}</div>
+              ) : null}
+
+              <div className="mt-2 flex gap-3 border-t border-black/10 pt-4">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="flex-1 rounded-xl bg-neutral-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:bg-neutral-400"
+                >
+                  {isSubmitting
+                    ? 'Guardando...'
+                    : editingId === null
+                      ? 'Crear'
+                      : 'Guardar cambios'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resetForm}
+                  className="rounded-xl border border-black/10 px-4 py-3 text-sm font-medium text-neutral-700 transition hover:bg-neutral-100"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

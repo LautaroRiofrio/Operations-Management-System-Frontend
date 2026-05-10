@@ -1,6 +1,7 @@
 'use client'
-import type { OrderSectionProps } from '@/types';
+
 import { useOrderDetails } from '@/app/hooks/useOrderDetails';
+import type { OrderSectionProps } from '@/types';
 
 const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
   const resolvedOrderId = selectedOrderId ?? null;
@@ -9,8 +10,16 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
   const { detailContent, productsContent } = (() => {
     if (resolvedOrderId === null) {
       return {
-        detailContent: <p className="text-sm text-neutral-600">Seleccioná una orden para ver el detalle.</p>,
-        productsContent: <p className="text-sm text-neutral-500">Los productos de la orden se verán acá.</p>,
+        detailContent: (
+          <p className="text-sm text-neutral-600">
+            Selecciona una orden para ver el detalle.
+          </p>
+        ),
+        productsContent: (
+          <p className="text-sm text-neutral-500">
+            Los productos de la orden se veran aca.
+          </p>
+        ),
       };
     }
 
@@ -30,8 +39,14 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
 
     if (!order) {
       return {
-        detailContent: <p className="text-sm text-neutral-600">No se encontró información para esta orden.</p>,
-        productsContent: <p className="text-sm text-neutral-500">No hay productos para mostrar.</p>,
+        detailContent: (
+          <p className="text-sm text-neutral-600">
+            No se encontro informacion para esta orden.
+          </p>
+        ),
+        productsContent: (
+          <p className="text-sm text-neutral-500">No hay productos para mostrar.</p>
+        ),
       };
     }
 
@@ -39,23 +54,32 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
 
     return {
       detailContent: (
-
-        <div className='flex flex-col gap-5 h-full'>
-          {/* order.customerId */}
-          <div >
+        <div className="flex h-full flex-col gap-5">
+          <div>
             <h2 className="text-2xl font-bold">Cliente</h2>
-            <div className="flex flex-col gap-3 rounded-xl bg-white py-2 px-2 ">
-              <div className='flex gap-2'>
-                <span className='font-bold'>Nombre:</span><span className="w-full">{order.customerName}</span>
+            <div className="flex flex-col gap-3 rounded-xl bg-white px-2 py-2">
+              <div className="flex gap-2">
+                <span className="font-bold">Nombre:</span>
+                <span className="w-full">{order.customerName}</span>
               </div>
-              <div className='flex gap-2'>
-                <span className='font-bold'>Numero de whatsap:</span><span>{order.customerWhatsapp}</span>
+              <div className="flex gap-2">
+                <span className="font-bold">Whatsapp:</span>
+                <span>{order.customerWhatsapp}</span>
               </div>
             </div>
           </div>
 
           <div>
-            <h2 className="text-2xl font-bold">Método de pago</h2>
+            <h2 className="text-2xl font-bold">Estado</h2>
+            <div className="flex gap-2">
+              <div className="flex-1 rounded-xl bg-white py-3 text-center">
+                {order.stateName ?? 'Sin estado'}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-bold">Metodo de pago</h2>
             <div className="flex gap-2">
               <div className="flex-1 rounded-xl bg-white py-3 text-center">
                 {order.paymentMethod}
@@ -67,9 +91,15 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
             <h2 className="text-2xl font-bold">Fecha de entrega</h2>
             <div className="grid gap-4 rounded-2xl bg-white p-5">
               <div className="flex justify-between">
-                <span className="text-neutral-500">Entrega</span>
+                <span className="text-neutral-500">Entrega estimada</span>
                 <span>{order.deliveryLabel}</span>
               </div>
+              {order.actualDeliveryLabel ? (
+                <div className="flex justify-between">
+                  <span className="text-neutral-500">Entrega real</span>
+                  <span>{order.actualDeliveryLabel}</span>
+                </div>
+              ) : null}
               {order.notes ? (
                 <div className="grid gap-2">
                   <span className="text-neutral-500">Notas</span>
@@ -85,7 +115,10 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
           <h3 className="text-lg font-semibold">Productos</h3>
           {orderLines.length > 0 ? (
             orderLines.map((line) => (
-              <div key={line.id} className="flex items-center justify-between gap-4 border-b border-neutral-200 pb-3 last:border-b-0 last:pb-0">
+              <div
+                key={line.id}
+                className="flex items-center justify-between gap-4 border-b border-neutral-200 pb-3 last:border-b-0 last:pb-0"
+              >
                 <div>
                   <p className="font-medium">{line.productName}</p>
                   <p className="text-sm text-neutral-500">Cantidad: {line.quantity}</p>
@@ -94,7 +127,7 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
               </div>
             ))
           ) : (
-            <p className="text-sm text-neutral-500">La orden no tiene líneas cargadas.</p>
+            <p className="text-sm text-neutral-500">La orden no tiene lineas cargadas.</p>
           )}
         </div>
       ),
@@ -103,22 +136,25 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
 
   return (
     <div className="grid h-full min-h-0 grid-cols-2 gap-5 p-5">
-      <div className="flex flex-col h-full   justify-betreen  min-h-0 flex-col gap-10 overflow-hidden">
-
+      <div className="flex min-h-0 flex-col gap-10 overflow-hidden">
         {detailContent}
 
-        <div className='flex gap-2'>
+        <div className="flex gap-2">
           <button
             type="button"
             className="h-full max-h-15 flex-1 rounded-xl bg-white py-3 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!order}
-            onClick={() => { setMode("editar") }}
+            onClick={() => {
+              setMode('editar');
+            }}
           >
-            Editar Pedido
+            Editar pedido
           </button>
           <button
             type="button"
-            onClick={() => { setMode("default") }}
+            onClick={() => {
+              setMode('default');
+            }}
             className="h-full max-h-15 flex-1 rounded-xl bg-white py-3 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancelar
@@ -126,12 +162,9 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
         </div>
       </div>
 
-      <div className="min-h-0 overflow-y-auto">
-        {productsContent}
-      </div>
+      <div className="min-h-0 overflow-y-auto">{productsContent}</div>
     </div>
   );
 };
-
 
 export default ViewOrder;

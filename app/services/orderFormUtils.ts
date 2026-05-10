@@ -5,7 +5,9 @@ type UnknownRecord = Record<string, unknown>;
 
 export type OrderBasePayload = {
   customerId: number;
-  paymentMethod?: string;
+  estimatedDelivery: string;
+  paymentMethod: string;
+  stateId: number;
 };
 
 export type OrderLinePayload = {
@@ -159,6 +161,9 @@ export async function withFallbacks<T>(attempts: Array<() => Promise<T>>): Promi
 export function buildOrderPayloadVariants(input: OrderBasePayload) {
   return {
     id_cliente: input.customerId,
+    id_estado_actual: input.stateId,
+    metodo_pago: input.paymentMethod,
+    entrega_estimada: new Date(input.estimatedDelivery).toISOString(),
   };
 }
 

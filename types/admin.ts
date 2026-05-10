@@ -27,6 +27,22 @@ export type CategoryInput = {
   nombre: string;
 };
 
+export type State = {
+  id: number;
+  nombre: string;
+  es_final: boolean;
+};
+
+export type StateInput = {
+  nombre: string;
+  es_final?: boolean;
+};
+
+export type StateUpdateInput = {
+  nombre?: string;
+  es_final?: boolean;
+};
+
 export type Ingredient = {
   id: number;
   nombre: string;
@@ -36,6 +52,21 @@ export type Ingredient = {
 export type IngredientInput = {
   nombre: string;
   unidad_medida: string;
+};
+
+export type RecipeIngredient = {
+  id: number;
+  id_preparacion: number;
+  id_ingrediente: number;
+  cantidad: number;
+  ingrediente?: Ingredient;
+};
+
+export type Recipe = {
+  id: number;
+  id_producto: number;
+  producto?: Product;
+  ingredientes: RecipeIngredient[];
 };
 
 export type Product = {
@@ -57,12 +88,23 @@ export type ProductInput = {
   nombre: string;
   id_categoria: number;
   precio?: number;
+  preparacion?: string;
 };
 
 export type ProductUpdateInput = {
   nombre?: string;
   id_categoria?: number;
   precio?: number;
+  preparacion?: string;
+};
+
+export type StockMovementType = {
+  id: number;
+  nombre: string;
+};
+
+export type StockMovementTypeInput = {
+  nombre: string;
 };
 
 export type CrudFormValues = Record<string, string>;

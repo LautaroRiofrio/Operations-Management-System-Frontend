@@ -9,7 +9,12 @@ import { useOrderDetails } from '@/app/hooks/useOrderDetails';
 import { useOrderForm } from '@/app/hooks/useOrderForm';
 import type { OrderDetail, OrderFormBaseProps, OrderFormValues } from '@/types';
 
-const PAYMENT_METHODS = ['Efectivo', 'Transferencia', 'Debito'] as const;
+const PAYMENT_METHODS = [
+  { label: 'Efectivo', value: 'efectivo' },
+  { label: 'Transferencia', value: 'transferencia' },
+  { label: 'Debito', value: 'debito' },
+] as const;
+const DEFAULT_NEW_ORDER_STATE_ID = 1;
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('es-AR', {
@@ -22,9 +27,30 @@ function formatCurrency(value: number) {
 function getEmptyFormValues(): OrderFormValues {
   return {
     customer: null,
-    paymentMethod: 'Efectivo',
+    estimatedDelivery: '',
     lines: [],
+    paymentMethod: 'efectivo',
+    stateId: null,
   };
+}
+
+function formatDateTimeLocal(value: string | null): string {
+  if (!value) {
+    return '';
+  }
+
+  const parsedDate = new Date(value);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
+  const year = parsedDate.getFullYear();
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(parsedDate.getDate()).padStart(2, '0');
+  const hours = String(parsedDate.getHours()).padStart(2, '0');
+  const minutes = String(parsedDate.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 }
 
 function mapOrderDetailToFormValues(order: OrderDetail): OrderFormValues {
@@ -36,7 +62,7 @@ function mapOrderDetailToFormValues(order: OrderDetail): OrderFormValues {
         whatsapp: order.customerWhatsapp,
       }
       : null,
-    paymentMethod: order.paymentMethod !== 'No informado' ? order.paymentMethod : 'Efectivo',
+    estimatedDelivery: formatDateTimeLocal(order.estimatedDeliveryValue),
     lines: order.lines.map((line) => ({
       lineId: line.id,
       productId: line.productId ?? line.id,
@@ -45,10 +71,13 @@ function mapOrderDetailToFormValues(order: OrderDetail): OrderFormValues {
       unitPrice: line.unitPrice,
       categoryId: null,
     })),
+    paymentMethod: order.paymentMethod !== 'No informado' ? order.paymentMethod.toLowerCase() : 'efectivo',
+    stateId: order.state,
   };
 }
 
 export default function OrderFormBase({
+  defaultStateId,
   selectedOrderId,
   setMode,
   variant,
@@ -64,12 +93,16 @@ export default function OrderFormBase({
   const initialValues =
     isEditing && orderDetails.order
       ? mapOrderDetailToFormValues(orderDetails.order)
-      : getEmptyFormValues();
+      : {
+          ...getEmptyFormValues(),
+          stateId: DEFAULT_NEW_ORDER_STATE_ID,
+        };
 
   const {
     addProduct,
     removeLine,
     setCustomer,
+    setEstimatedDelivery,
     setPaymentMethod,
     submit,
     submitError,
@@ -81,13 +114,14 @@ export default function OrderFormBase({
   } = useOrderForm({
     initialValues,
     orderId: resolvedOrderId,
-    resetKey: isEditing ? `edit-${orderDetails.order?.id ?? 'loading'}` : 'create',
+    resetKey: isEditing ? `edit-${orderDetails.order?.id ?? 'loading'}` : `create-${defaultStateId ?? 'none'}`,
     validProductIds: catalog.products.map((product) => product.id),
     variant,
   });
 
-  const catalogLoading = catalog.categoriesLoading || catalog.productsLoading;
-  const catalogError = catalog.categoriesError ?? catalog.productsError;
+  const catalogLoading = catalog.productsLoading;
+  const catalogError = catalog.productsError;
+
   const handleRetryCatalog = async () => {
     await Promise.all([catalog.refreshCategories(), catalog.refreshProducts()]);
   };
@@ -167,13 +201,22 @@ export default function OrderFormBase({
               </button>
             </div>
             
-            {/* metodo de pago */}
+            <div className=''>
+              <h3 className="mb-3 text-xl font-semibold text-neutral-900">Entrega estimada</h3>
+              <input
+                type="datetime-local"
+                value={values.estimatedDelivery}
+                onChange={(event) => setEstimatedDelivery(event.target.value)}
+                className="w-full rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 shadow-sm outline-none transition focus:border-neutral-400"
+              />
+            </div>
+
             <div className=''>
               <h3 className="mb-3 text-xl font-semibold text-neutral-900">Metodo de pago</h3>
               <div className="grid grid-cols-3 gap-3">
                 {PAYMENT_METHODS.map((method) => (
-                  <button key={method} type="button" onClick={() => setPaymentMethod(method)} className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${values.paymentMethod === method ? 'bg-regal-gris-hover text-white' : 'bg-white text-neutral-700 shadow-sm hover:bg-neutral-100' }`} >
-                    {method}
+                  <button key={method.value} type="button" onClick={() => setPaymentMethod(method.value)} className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${values.paymentMethod === method.value ? 'bg-regal-gris-hover text-white' : 'bg-white text-neutral-700 shadow-sm hover:bg-neutral-100' }`} >
+                    {method.label}
                   </button>
                 ))}
               </div>
@@ -225,8 +268,21 @@ export default function OrderFormBase({
                 </span>
               </div>
               <div className="flex items-center justify-between gap-4">
+                <span>Entrega</span>
+                <span className="font-medium text-neutral-900">
+                  {values.estimatedDelivery
+                    ? new Intl.DateTimeFormat('es-AR', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      }).format(new Date(values.estimatedDelivery))
+                    : 'Sin definir'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
                 <span>Pago</span>
-                <span className="font-medium text-neutral-900">{values.paymentMethod}</span>
+                <span className="font-medium text-neutral-900">
+                  {PAYMENT_METHODS.find((method) => method.value === values.paymentMethod)?.label ?? values.paymentMethod}
+                </span>
               </div>
             </div>
 

@@ -6,11 +6,11 @@ import EmptyOrder from './emptyOrder';
 import ViewOrder from './viewOrder';
 import type { OrderSectionProps } from '@/types';
 
-const OrderSection = ({ setMode, mode, selectedOrderId }: OrderSectionProps) => {
+const OrderSection = ({ defaultStateId, setMode, mode, selectedOrderId }: OrderSectionProps) => {
   const renderContent = () => {
     switch (mode) {
       case 'crear':
-        return <OrderForm setMode={setMode} mode={mode} />;
+        return <OrderForm defaultStateId={defaultStateId} setMode={setMode} mode={mode} />;
       case 'editar':
         return <EditOrderForm selectedOrderId={selectedOrderId} setMode={setMode} mode={mode} />;
       case 'ver':

@@ -45,6 +45,7 @@ export function useOrderDetails(orderId: number | null): UseOrderDetailsResult {
       return;
     }
 
+    const resolvedOrderId = orderId;
     const cachedOrder = cacheRef.current.get(orderId);
     if (cachedOrder) {
       setOrder(cachedOrder);
@@ -58,7 +59,7 @@ export function useOrderDetails(orderId: number | null): UseOrderDetailsResult {
       setError(null);
 
       try {
-        const response = await getOrderById(orderId);
+        const response = await getOrderById(resolvedOrderId);
         if (cancelled) {
           return;
         }
@@ -68,7 +69,7 @@ export function useOrderDetails(orderId: number | null): UseOrderDetailsResult {
           throw new Error('Invalid order payload');
         }
 
-        cacheRef.current.set(orderId, normalizedOrder);
+        cacheRef.current.set(resolvedOrderId, normalizedOrder);
         setOrder(normalizedOrder);
       } catch {
         if (cancelled) {

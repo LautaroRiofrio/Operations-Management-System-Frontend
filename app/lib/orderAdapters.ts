@@ -18,6 +18,9 @@ const CUSTOMER_NAME_KEYS = [
   'name',
 ];
 const DELIVERY_KEYS = [
+  'entrega_estimada',
+  'estimated_delivery',
+  'estimatedDelivery',
   'deliveryDate',
   'delivery_at',
   'deliveryAt',
@@ -26,9 +29,24 @@ const DELIVERY_KEYS = [
   'delivery',
 ];
 const TOTAL_KEYS = ['total', 'totalAmount', 'amount', 'importe', 'subtotal'];
-const PAYMENT_KEYS = ['paymentMethod', 'payment_method', 'metodoPago', 'paymentType'];
+const PAYMENT_KEYS = [
+  'metodo_pago',
+  'paymentMethod',
+  'payment_method',
+  'metodoPago',
+  'paymentType',
+];
 const NOTES_KEYS = ['notes', 'note', 'observations', 'observacion', 'comentarios'];
-const STATE_KEYS = ['state', 'status', 'estado', 'stateId', 'statusId'];
+const STATE_KEYS = [
+  'id_estado_actual',
+  'estado_actual.id',
+  'state',
+  'status',
+  'estado',
+  'stateId',
+  'statusId',
+];
+const STATE_NAME_KEYS = ['estado_actual.nombre', 'stateName', 'statusName', 'estadoNombre'];
 
 function isRecord(value: unknown): value is RawOrderRecord {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -165,25 +183,24 @@ export function normalizeOrdersResponse(payload: unknown): OrderListItem[] {
         ? payload.orders
         : [];
 
-  return orders
-    .map((item) => {
-      const raw = coerceRecord(item);
-      const id = toNumber(pickFirst(raw, ORDER_ID_KEYS));
-      if (id === null) {
-        return null;
-      }
+  return orders.flatMap<OrderListItem>((item) => {
+    const raw = coerceRecord(item);
+    const id = toNumber(pickFirst(raw, ORDER_ID_KEYS));
+    if (id === null) {
+      return [];
+    }
 
-      return {
-        id,
-        orderNumber: toText(pickFirst(raw, ORDER_NUMBER_KEYS), `#${id}`),
-        customerName: toText(pickFirst(raw, CUSTOMER_NAME_KEYS), 'Cliente sin nombre'),
-        deliveryLabel: formatDelivery(pickFirst(raw, DELIVERY_KEYS)),
-        totalLabel: formatCurrency(pickFirst(raw, TOTAL_KEYS)),
-        state: toNumber(pickFirst(raw, STATE_KEYS)),
-        raw,
-      } satisfies OrderListItem;
-    })
-    .filter((order): order is OrderListItem => order !== null);
+    return [{
+      id,
+      orderNumber: toText(pickFirst(raw, ORDER_NUMBER_KEYS), `#${id}`),
+      customerName: toText(pickFirst(raw, CUSTOMER_NAME_KEYS), 'Cliente sin nombre'),
+      deliveryLabel: formatDelivery(pickFirst(raw, DELIVERY_KEYS)),
+      totalLabel: formatCurrency(pickFirst(raw, TOTAL_KEYS)),
+      state: toNumber(pickFirst(raw, STATE_KEYS)),
+      stateName: toText(pickFirst(raw, STATE_NAME_KEYS), '-'),
+      raw,
+    }];
+  });
 }
 
 export function normalizeOrderDetail(payload: unknown): OrderDetail | null {
@@ -195,13 +212,15 @@ export function normalizeOrderDetail(payload: unknown): OrderDetail | null {
     return null;
   }
 
+  const estimatedDeliveryValue = pickFirst(raw, DELIVERY_KEYS);
+  const stateIsFinal = getValueByPath(raw, 'estado_actual.es_final');
   const rawLines = Array.isArray(raw.lineas) ? raw.lineas : [];
   const lines = rawLines.map((line) => {
     const rawLine = coerceRecord(line);
     const rawProduct = coerceRecord(rawLine.producto);
     const quantity = toNumber(rawLine.cantidad) ?? 0;
-    const unitPrice = toNumber(rawProduct.precio);
-    const subtotal = unitPrice === null ? null : unitPrice * quantity;
+    const unitPrice = toNumber(rawLine.precio_unitario ?? rawProduct.precio);
+    const subtotal = toNumber(rawLine.subtotal) ?? (unitPrice === null ? null : unitPrice * quantity);
 
     return {
       id: toNumber(rawLine.id) ?? 0,
@@ -235,12 +254,26 @@ export function normalizeOrderDetail(payload: unknown): OrderDetail | null {
       'No informado'
     ),
     paymentMethod: toText(pickFirst(raw, PAYMENT_KEYS), 'No informado'),
-    deliveryLabel: formatDelivery(raw.fecha_entrega ?? pickFirst(raw, DELIVERY_KEYS)),
+    deliveryLabel: formatDelivery(estimatedDeliveryValue),
+    estimatedDeliveryValue:
+      typeof estimatedDeliveryValue === 'string'
+        ? String(estimatedDeliveryValue)
+        : null,
+    actualDeliveryLabel: (() => {
+      const actualDelivery = raw.entrega_real;
+      if (typeof actualDelivery !== 'string' || !actualDelivery.trim()) {
+        return null;
+      }
+
+      return formatDelivery(actualDelivery);
+    })(),
     totalLabel:
       computedTotal !== null && computedTotal > 0
         ? formatCurrencyFromNumber(computedTotal)
         : formatCurrency(pickFirst(raw, TOTAL_KEYS)),
-    state: toNumber(raw.estado ?? pickFirst(raw, STATE_KEYS)),
+    state: toNumber(pickFirst(raw, STATE_KEYS)),
+    stateName: toText(pickFirst(raw, STATE_NAME_KEYS), 'Sin estado'),
+    stateIsFinal: typeof stateIsFinal === 'boolean' ? stateIsFinal : null,
     notes: (() => {
       const notes = pickFirst(raw, NOTES_KEYS);
       return typeof notes === 'string' && notes.trim() ? notes : null;

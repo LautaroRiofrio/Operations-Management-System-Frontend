@@ -14,6 +14,7 @@ export type OrderListItem = {
   deliveryLabel: string;
   totalLabel: string;
   state: number | null;
+  stateName: string | null;
   raw: RawOrderRecord;
 };
 
@@ -25,8 +26,12 @@ export type OrderDetail = {
   customerWhatsapp: string;
   paymentMethod: string;
   deliveryLabel: string;
+  estimatedDeliveryValue: string | null;
+  actualDeliveryLabel: string | null;
   totalLabel: string;
   state: number | null;
+  stateName: string | null;
+  stateIsFinal: boolean | null;
   notes: string | null;
   lines: {
     id: number;
@@ -40,6 +45,7 @@ export type OrderDetail = {
 };
 
 export type OrderSectionProps = {
+  defaultStateId?: number | null;
   mode: OrderMode;
   selectedOrderId?: number | null;
   setMode: SetOrderMode;
@@ -69,12 +75,16 @@ export type OrderFormLine = {
 export type OrderFormValues = {
   customer: OrderCustomerOption | null;
   paymentMethod: string;
+  stateId: number | null;
+  estimatedDelivery: string;
   lines: OrderFormLine[];
 };
 
 export type OrderMutationInput = {
   customerId: number;
   paymentMethod: string;
+  stateId: number;
+  estimatedDelivery: string;
   lines: {
     lineId?: number | null;
     productId: number;
@@ -88,6 +98,7 @@ export type CreateCustomerInput = {
 };
 
 export type OrderFormBaseProps = {
+  defaultStateId?: number | null;
   selectedOrderId?: number | null;
   setMode: SetOrderMode;
   variant: 'create' | 'edit';

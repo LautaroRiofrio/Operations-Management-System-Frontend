@@ -11,6 +11,12 @@ import type {
   ProductInput,
   ProductUpdateInput,
   ProductWithCategory,
+  Recipe,
+  State,
+  StateInput,
+  StateUpdateInput,
+  StockMovementType,
+  StockMovementTypeInput,
 } from '@/types';
 import { api } from '@/app/services/api';
 import { administrativePaths } from '@/app/services/openapiPaths';
@@ -21,27 +27,47 @@ type ListQuery = {
   q?: string;
 };
 
-function extractCollection<T>(payload: PaginatedResponse<T> | T[]): T[] {
+type CollectionPayload<T> =
+  | T[]
+  | Partial<PaginatedResponse<T>> & {
+      items?: T[];
+      products?: T[];
+      productos?: T[];
+    };
+
+function extractCollection<T>(payload: CollectionPayload<T>): T[] {
   if (Array.isArray(payload)) {
     return payload;
   }
 
-  return Array.isArray(payload.data) ? payload.data : [];
+  if (Array.isArray(payload.data)) {
+    return payload.data;
+  }
+
+  if (Array.isArray(payload.items)) {
+    return payload.items;
+  }
+
+  if (Array.isArray(payload.products)) {
+    return payload.products;
+  }
+
+  return Array.isArray(payload.productos) ? payload.productos : [];
 }
 
 async function listResource<T>(path: string, params?: ListQuery): Promise<T[]> {
-  const { data } = await api.get<PaginatedResponse<T> | T[]>(path, { params });
+  const { data } = await api.get<CollectionPayload<T>>(path, { params });
   return extractCollection(data);
 }
 
 export function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
   if (axios.isAxiosError(error)) {
     const apiError = error.response?.data as ErrorResponse | MessageResponse | undefined;
-    if (apiError?.error) {
+    if (apiError && 'error' in apiError && apiError.error) {
       return apiError.error;
     }
 
-    if (apiError?.message) {
+    if (apiError && 'message' in apiError && apiError.message) {
       return apiError.message;
     }
   }
@@ -54,6 +80,28 @@ export async function listCategories() {
     page: 1,
     pageSize: 100,
   });
+}
+
+export async function listStates() {
+  return listResource<State>(administrativePaths.states.collection, {
+    page: 1,
+    pageSize: 100,
+  });
+}
+
+export async function createState(payload: StateInput) {
+  const { data } = await api.post<State>(administrativePaths.states.collection, payload);
+  return data;
+}
+
+export async function updateState(id: number, payload: StateUpdateInput) {
+  const { data } = await api.put<State>(administrativePaths.states.detail(id), payload);
+  return data;
+}
+
+export async function deleteState(id: number) {
+  const { data } = await api.delete<MessageResponse>(administrativePaths.states.detail(id));
+  return data;
 }
 
 export async function createCategory(payload: CategoryInput) {
@@ -93,11 +141,36 @@ export async function deleteIngredient(id: number) {
   return data;
 }
 
+export async function listRecipes() {
+  return listResource<Recipe>(administrativePaths.recipes.collection, {
+    page: 1,
+    pageSize: 100,
+  });
+}
+
+export async function createRecipe(payload: { id_producto: number }) {
+  const { data } = await api.post<Recipe>(administrativePaths.recipes.collection, payload);
+  return data;
+}
+
+export async function updateRecipe(
+  id: number,
+  payload: { ingredientes: { id_ingrediente: number; cantidad: number }[] },
+) {
+  const { data } = await api.put<Recipe>(administrativePaths.recipes.detail(id), payload);
+  return data;
+}
+
 export async function listProducts() {
   return listResource<ProductExpanded>(administrativePaths.products.collection, {
     page: 1,
     pageSize: 100,
   });
+}
+
+export async function getProductById(id: number) {
+  const { data } = await api.get<ProductExpanded>(administrativePaths.products.detail(id));
+  return data;
 }
 
 export async function createProduct(payload: ProductInput) {
@@ -112,5 +185,35 @@ export async function updateProduct(id: number, payload: ProductUpdateInput) {
 
 export async function deleteProduct(id: number) {
   const { data } = await api.delete<MessageResponse>(administrativePaths.products.detail(id));
+  return data;
+}
+
+export async function listStockMovementTypes() {
+  return listResource<StockMovementType>(administrativePaths.stockMovementTypes.collection, {
+    page: 1,
+    pageSize: 100,
+  });
+}
+
+export async function createStockMovementType(payload: StockMovementTypeInput) {
+  const { data } = await api.post<StockMovementType>(
+    administrativePaths.stockMovementTypes.collection,
+    payload,
+  );
+  return data;
+}
+
+export async function updateStockMovementType(id: number, payload: StockMovementTypeInput) {
+  const { data } = await api.put<StockMovementType>(
+    administrativePaths.stockMovementTypes.detail(id),
+    payload,
+  );
+  return data;
+}
+
+export async function deleteStockMovementType(id: number) {
+  const { data } = await api.delete<MessageResponse>(
+    administrativePaths.stockMovementTypes.detail(id),
+  );
   return data;
 }

@@ -33,6 +33,14 @@ export function useOrdersByState(state: number): UseOrdersByStateResult {
 
   useEffect(() => {
     let cancelled = false;
+
+    if (state <= 0) {
+      setOrders([]);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     const cachedOrders = cacheRef.current.get(state);
 
     if (cachedOrders) {

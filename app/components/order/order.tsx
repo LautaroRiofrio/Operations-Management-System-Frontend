@@ -22,6 +22,10 @@ const Order = ({ order, isSelected, onSelect }: OrderCardProps) => {
                 <h3>{order.deliveryLabel}</h3>
             </div>
             <div className="flex justify-between">
+                <h3>Estado:</h3>
+                <h3>{order.stateName ?? '-'}</h3>
+            </div>
+            <div className="flex justify-between">
                 <h3>Total:</h3>
                 <h3>{order.totalLabel}</h3>
             </div>
