@@ -1,0 +1,451 @@
+'use client'
+
+import { AnimatePresence, motion } from 'framer-motion';
+import { useProductionBoard } from '@/app/hooks/useProductionBoard';
+
+function buildLineKey(orderId: number, lineId: number) {
+  return `${orderId}:${lineId}`;
+}
+
+export default function ProductionSection() {
+  const {
+    activeAction,
+    activeOrderId,
+    banner,
+    boardError,
+    cancelOrder,
+    completeOrder,
+    expandedLines,
+    hasStateConfigError,
+    incrementProduct,
+    isLoadingBoard,
+    isOrderComplete,
+    pendingOrders,
+    producedByLine,
+    productionOrders,
+    startOrder,
+    toggleLine,
+  } = useProductionBoard();
+
+  const currentOrder = productionOrders[0] ?? null;
+  const totalOrdersInProduction = productionOrders.length;
+  const totalProductsInProgress = currentOrder?.products.length ?? 0;
+
+  return (
+    <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_32%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_45%,_#fafaf9_100%)]">
+      <div className="grid h-full min-h-0 gap-6 p-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.28)] backdrop-blur">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 pb-5">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+                Estacion de produccion
+              </p>
+              <div className="space-y-1">
+                <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">
+                  Preparacion en tiempo real
+                </h1>
+                <p className="max-w-2xl text-sm text-neutral-500">
+                  Activa pedidos desde pendientes, registra el avance por producto y libera la
+                  mesa apenas todo este completo.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid min-w-[220px] gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-black/10 bg-stone-50 px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  Pendientes
+                </p>
+                <p className="mt-2 text-3xl font-semibold text-neutral-950">{pendingOrders.length}</p>
+              </div>
+              <div className="rounded-2xl border border-black/10 bg-stone-100 px-4 py-3">
+                <p className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  En produccion
+                </p>
+                <p className="mt-2 text-3xl font-semibold text-neutral-950">{totalOrdersInProduction}</p>
+              </div>
+            </div>
+          </div>
+
+          <AnimatePresence>
+            {banner ? (
+              <motion.div
+                key={banner.text}
+                initial={false}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${
+                  banner.tone === 'success'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-red-200 bg-red-50 text-red-700'
+                }`}
+              >
+                {banner.text}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {hasStateConfigError ? (
+            <div className="mt-5 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+              Faltan estados operativos configurados. La vista necesita reconocer
+              {' '}`pendiente`, `en produccion`, `listo` y `cancelado` por nombre para funcionar.
+            </div>
+          ) : null}
+
+          {boardError ? (
+            <div className="mt-5 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+              {boardError}
+            </div>
+          ) : null}
+
+          {isLoadingBoard && productionOrders.length === 0 ? (
+            <div className="mt-6 grid gap-4 lg:grid-cols-2">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-64 animate-pulse rounded-[28px] border border-slate-200 bg-slate-100"
+                />
+              ))}
+            </div>
+          ) : null}
+
+          {!isLoadingBoard && !boardError && productionOrders.length === 0 ? (
+            <div className="mt-6 flex min-h-[280px] flex-1 items-center justify-center rounded-[28px] border border-dashed border-slate-300 bg-slate-50/80 p-8 text-center">
+              <div className="max-w-md space-y-3">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm">
+                    <span className="text-2xl">+</span>
+                  </div>
+                <h2 className="text-xl font-semibold text-neutral-900">No hay pedidos en produccion</h2>
+                <p className="text-sm leading-6 text-neutral-500">
+                  Selecciona un pedido de la columna lateral para empezar a trabajarlo. Cuando lo
+                  pases a produccion aparecera aca con su avance y sus ingredientes.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {currentOrder ? (
+            <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-2">
+              <motion.div layout className="grid gap-5">
+                <AnimatePresence initial={false}>
+                  {(() => {
+                    const order = currentOrder;
+                    const completedProducts = order.products.filter((product) => {
+                      const lineKey = buildLineKey(order.id, product.id);
+                      return (producedByLine[lineKey] ?? 0) >= product.quantityRequired;
+                    }).length;
+                    const orderProgress =
+                      order.products.length === 0
+                        ? 0
+                        : Math.round((completedProducts / order.products.length) * 100);
+                    const isCompleting = activeOrderId === order.id && activeAction === 'complete';
+                    const isCancelling = activeOrderId === order.id && activeAction === 'cancel';
+
+                    return (
+                      <motion.article
+                        key={order.id}
+                        layout
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -18, scale: 0.98 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        className="overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.35)]"
+                      >
+                        <div className="border-b border-black/10 bg-[linear-gradient(135deg,_#171717_0%,_#404040_100%)] px-6 py-5 text-white">
+                          <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-white/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.25em] text-stone-100">
+                                  {order.orderNumber}
+                                </span>
+                                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-stone-100">
+                                  En produccion
+                                </span>
+                              </div>
+                              <div>
+                                <h2 className="text-2xl font-semibold">{order.customerName}</h2>
+                                <p className="mt-1 text-sm text-stone-300">
+                                  Entrega {order.deliveryLabel}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="min-w-[180px] rounded-2xl bg-white/10 px-4 py-3">
+                              <div className="flex items-center justify-between text-xs uppercase tracking-wide text-stone-300">
+                                <span>Avance</span>
+                                <span>{orderProgress}%</span>
+                              </div>
+                              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                                <motion.div
+                                  className="h-full rounded-full bg-amber-400"
+                                  animate={{ width: `${orderProgress}%` }}
+                                  transition={{ duration: 0.25 }}
+                                />
+                              </div>
+                              <p className="mt-3 text-sm text-stone-200">
+                                {completedProducts} de {order.products.length} productos completos
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4 px-6 py-5">
+                          {order.products.map((product) => {
+                            const lineKey = buildLineKey(order.id, product.id);
+                            const producedQuantity = producedByLine[lineKey] ?? 0;
+                            const lineComplete = producedQuantity >= product.quantityRequired;
+                            const detailsOpen = expandedLines[lineKey] ?? false;
+
+                            return (
+                              <motion.div
+                                key={lineKey}
+                                layout
+                                className={`rounded-3xl border px-4 py-4 transition ${
+                                  lineComplete
+                                    ? 'border-emerald-200 bg-emerald-50'
+                                    : 'border-black/10 bg-stone-50/80'
+                                }`}
+                              >
+                                <div className="flex flex-wrap items-center gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <h3 className="text-lg font-semibold text-neutral-900">
+                                        {product.productName}
+                                      </h3>
+                                      {lineComplete ? (
+                                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                                          Completo
+                                        </span>
+                                      ) : (
+                                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-700">
+                                          En proceso
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="mt-1 text-sm text-neutral-500">
+                                      {producedQuantity} / {product.quantityRequired} unidades
+                                      preparadas
+                                    </p>
+                                  </div>
+
+                                  <div className="flex items-center gap-3">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        incrementProduct(order.id, product.id, product.quantityRequired)
+                                      }
+                                      disabled={lineComplete}
+                                      className="inline-flex h-12 min-w-12 items-center justify-center rounded-2xl bg-slate-900 px-4 text-xl font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                    >
+                                      +
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleLine(order.id, product.id)}
+                                      className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition hover:border-black/20 hover:bg-stone-100"
+                                    >
+                                      {detailsOpen ? 'Ocultar receta' : 'Ver receta'}
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
+                                  <motion.div
+                                    className={`h-full rounded-full ${
+                                      lineComplete ? 'bg-emerald-500' : 'bg-neutral-900'
+                                    }`}
+                                    animate={{
+                                      width: `${Math.round(
+                                        (producedQuantity / Math.max(product.quantityRequired, 1)) * 100,
+                                      )}%`,
+                                    }}
+                                    transition={{ duration: 0.2 }}
+                                  />
+                                </div>
+
+                                <AnimatePresence initial={false}>
+                                  {detailsOpen ? (
+                                    <motion.div
+                                      initial={false}
+                                      animate={{ opacity: 1, height: 'auto' }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.2 }}
+                                      className="overflow-hidden"
+                                    >
+                                      <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
+                                        <div className="mb-3 flex items-center justify-between">
+                                          <h4 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
+                                            Ingredientes
+                                          </h4>
+                                          <span className="text-xs text-neutral-400">
+                                            {product.ingredients.length} items
+                                          </span>
+                                        </div>
+
+                                        {product.ingredients.length > 0 ? (
+                                          <div className="grid gap-3">
+                                            {product.ingredients.map((ingredient) => (
+                                              <div
+                                                key={ingredient.id}
+                                                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3"
+                                              >
+                                                <span className="font-medium text-neutral-800">
+                                                  {ingredient.name}
+                                                </span>
+                                                <span className="rounded-full bg-white px-3 py-1 text-sm text-neutral-600 shadow-sm">
+                                                  {ingredient.quantityLabel}
+                                                </span>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        ) : (
+                                          <p className="text-sm text-neutral-500">
+                                            Este producto todavia no tiene receta cargada.
+                                          </p>
+                                        )}
+                                      </div>
+                                    </motion.div>
+                                  ) : null}
+                                </AnimatePresence>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-4 border-t border-black/10 bg-stone-50 px-6 py-4">
+                          <div>
+                            <p className="text-sm font-medium text-neutral-900">{order.totalLabel}</p>
+                            <p className="text-xs text-neutral-500">
+                              {totalProductsInProgress} productos activos en la mesa
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const shouldCancel = window.confirm(`Cancelar ${order.orderNumber}?`);
+                                if (shouldCancel) {
+                                  void cancelOrder(order);
+                                }
+                              }}
+                              disabled={isCompleting || isCancelling}
+                              className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                            >
+                              {isCancelling ? 'Cancelando...' : 'Cancelar orden'}
+                            </button>
+
+                            {isOrderComplete(order) ? (
+                              <button
+                                type="button"
+                                onClick={() => void completeOrder(order)}
+                                disabled={isCompleting || isCancelling}
+                                className="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                              >
+                                {isCompleting ? 'Completando...' : 'Completar pedido'}
+                              </button>
+                            ) : (
+                              <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm text-neutral-500">
+                                Completa todos los productos para habilitar el cierre
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </motion.article>
+                    );
+                  })()}
+                </AnimatePresence>
+              </motion.div>
+            </div>
+          ) : null}
+        </section>
+
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-[32px] border border-slate-200/80 bg-slate-900 text-slate-50 shadow-[0_24px_80px_-36px_rgba(15,23,42,0.7)]">
+          <div className="border-b border-white/10 px-5 py-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+              Cola operativa
+            </p>
+            <h2 className="mt-2 text-2xl font-semibold">Pedidos pendientes</h2>
+            <p className="mt-2 text-sm text-slate-400">
+              Selecciona un pedido para pasarlo automaticamente a produccion.
+            </p>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+            {isLoadingBoard && pendingOrders.length === 0 ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div
+                    key={index}
+                    className="h-28 animate-pulse rounded-3xl bg-white/8"
+                  />
+                ))}
+              </div>
+            ) : null}
+
+            {!isLoadingBoard && pendingOrders.length === 0 ? (
+              <div className="flex h-full min-h-[220px] items-center justify-center rounded-[28px] border border-dashed border-white/15 bg-white/5 p-6 text-center">
+                <div className="space-y-3">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl">
+                    0
+                  </div>
+                  <h3 className="text-lg font-semibold">Sin pedidos pendientes</h3>
+                  <p className="text-sm leading-6 text-slate-400">
+                    Cuando lleguen nuevas ordenes en estado pendiente, apareceran aca.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <motion.div layout className="space-y-3">
+              <AnimatePresence initial={false}>
+                {pendingOrders.map((order) => {
+                  const isStarting = activeOrderId === order.id && activeAction === 'start';
+
+                  return (
+                    <motion.button
+                      key={order.id}
+                      layout
+                      type="button"
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 24 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      onClick={() => void startOrder(order)}
+                      disabled={isStarting}
+                      className="w-full rounded-[28px] border border-white/10 bg-white/6 p-4 text-left transition hover:border-amber-300/50 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-2">
+                          <span className="inline-flex rounded-full bg-amber-400/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
+                            {order.orderNumber}
+                          </span>
+                          <div>
+                            <h3 className="text-lg font-semibold text-white">{order.customerName}</h3>
+                            <p className="mt-1 text-sm text-slate-300">{order.deliveryLabel}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
+                          <p className="mt-1 font-medium text-slate-100">{order.totalLabel}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3">
+                        <span className="text-sm text-slate-300">
+                          {isStarting ? 'Moviendo a produccion...' : 'Iniciar preparacion'}
+                        </span>
+                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+                          Pendiente
+                        </span>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}

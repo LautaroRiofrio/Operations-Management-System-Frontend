@@ -1,0 +1,366 @@
+'use client'
+
+import { AnimatePresence, motion } from 'framer-motion';
+import { useDeliveryBoard } from '@/app/hooks/useDeliveryBoard';
+
+export default function DeliverySection() {
+  const {
+    activeAction,
+    activeOrderId,
+    banner,
+    cancelOrder,
+    deliverOrder,
+    detailError,
+    detailLoading,
+    hasStateConfigError,
+    order,
+    readyOrders,
+    readyOrdersError,
+    readyOrdersLoading,
+    selectedOrderId,
+    selectedOrderListItem,
+    setSelectedOrderId,
+    statesLoading,
+  } = useDeliveryBoard();
+
+  const isBusy = readyOrdersLoading || statesLoading;
+  const currentProducts = order?.lines ?? [];
+  const currentOrderIsDelivering =
+    selectedOrderListItem && activeOrderId === selectedOrderListItem.id && activeAction === 'deliver';
+  const currentOrderIsCancelling =
+    selectedOrderListItem && activeOrderId === selectedOrderListItem.id && activeAction === 'cancel';
+
+  return (
+    <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_30%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_45%,_#fafaf9_100%)]">
+      <div className="grid h-full min-h-0 gap-6 p-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-[32px] border border-black/10 bg-neutral-950 text-white shadow-[0_24px_80px_-36px_rgba(0,0,0,0.55)]">
+          <div className="border-b border-white/10 px-5 py-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+              Despacho
+            </p>
+            <h1 className="mt-2 text-2xl font-semibold">Pedidos listos</h1>
+            <p className="mt-2 text-sm text-neutral-400">
+              Abre un pedido para revisar el detalle final y cerrarlo como entregado o cancelado.
+            </p>
+          </div>
+
+          <div className="grid gap-3 border-b border-white/10 px-5 py-4 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">En cola</p>
+              <p className="mt-2 text-3xl font-semibold">{readyOrders.length}</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Seleccionado</p>
+              <p className="mt-2 text-lg font-semibold">
+                {selectedOrderListItem?.orderNumber ?? '-'}
+              </p>
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+            {isBusy && readyOrders.length === 0 ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="h-28 animate-pulse rounded-3xl bg-white/8" />
+                ))}
+              </div>
+            ) : null}
+
+            {!isBusy && !readyOrdersError && readyOrders.length === 0 ? (
+              <div className="flex h-full min-h-[220px] items-center justify-center rounded-[28px] border border-dashed border-white/15 bg-white/5 p-6 text-center">
+                <div className="space-y-3">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-xl">
+                    0
+                  </div>
+                  <h2 className="text-lg font-semibold">No hay pedidos listos</h2>
+                  <p className="text-sm leading-6 text-neutral-400">
+                    Los pedidos que terminen Produccion apareceran aca para su entrega final.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {readyOrdersError ? (
+              <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                {readyOrdersError}
+              </div>
+            ) : null}
+
+            <div className="space-y-3">
+              <AnimatePresence initial={false}>
+                {readyOrders.map((readyOrder) => {
+                  const isSelected = readyOrder.id === selectedOrderId;
+                  const isWorking = activeOrderId === readyOrder.id;
+
+                  return (
+                    <motion.button
+                      key={readyOrder.id}
+                      type="button"
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -18 }}
+                      transition={{ duration: 0.18, ease: 'easeOut' }}
+                      onClick={() => setSelectedOrderId(readyOrder.id)}
+                      className={`w-full rounded-[28px] border p-4 text-left transition ${
+                        isSelected
+                          ? 'border-white/30 bg-white/12'
+                          : 'border-white/10 bg-white/6 hover:border-white/20 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="space-y-2">
+                          <span className="inline-flex rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-neutral-200">
+                            {readyOrder.orderNumber}
+                          </span>
+                          <div>
+                            <h3 className="text-lg font-semibold">{readyOrder.customerName}</h3>
+                            <p className="mt-1 text-sm text-neutral-300">{readyOrder.deliveryLabel}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-wide text-neutral-500">Total</p>
+                          <p className="mt-1 font-medium text-neutral-100">{readyOrder.totalLabel}</p>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                        <span className="text-sm text-neutral-300">
+                          {isWorking ? 'Procesando cierre...' : 'Abrir detalle'}
+                        </span>
+                        <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-200">
+                          Listo
+                        </span>
+                      </div>
+                    </motion.button>
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          </div>
+        </aside>
+
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.24)]">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 pb-5">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+                Entrega final
+              </p>
+              <div className="space-y-1">
+                <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">
+                  Confirmacion de salida
+                </h2>
+                <p className="max-w-2xl text-sm text-neutral-500">
+                  Revisa la orden lista, valida sus productos y cierra la operacion como entregada
+                  o cancelada.
+                </p>
+              </div>
+            </div>
+
+            {selectedOrderListItem ? (
+              <div className="rounded-2xl border border-black/10 bg-stone-50 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-neutral-500">Orden activa</p>
+                <p className="mt-2 text-lg font-semibold text-neutral-900">
+                  {selectedOrderListItem.orderNumber}
+                </p>
+              </div>
+            ) : null}
+          </div>
+
+          <AnimatePresence>
+            {banner ? (
+              <motion.div
+                key={banner.text}
+                initial={false}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${
+                  banner.tone === 'success'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-red-200 bg-red-50 text-red-700'
+                }`}
+              >
+                {banner.text}
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
+
+          {hasStateConfigError ? (
+            <div className="mt-5 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+              Faltan estados operativos configurados. La vista necesita reconocer `listo`,
+              `entregado` y `cancelado` por nombre para funcionar.
+            </div>
+          ) : null}
+
+          {selectedOrderListItem === null && !readyOrdersLoading ? (
+            <div className="mt-6 flex min-h-[320px] flex-1 items-center justify-center rounded-[28px] border border-dashed border-black/10 bg-stone-50/80 p-8 text-center">
+              <div className="max-w-md space-y-3">
+                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white shadow-sm">
+                  <span className="text-2xl">+</span>
+                </div>
+                <h3 className="text-xl font-semibold text-neutral-900">
+                  Selecciona un pedido listo
+                </h3>
+                <p className="text-sm leading-6 text-neutral-500">
+                  Al abrir una orden vas a poder inspeccionar sus datos, revisar sus lineas y
+                  cerrarla como entregada o cancelada.
+                </p>
+              </div>
+            </div>
+          ) : null}
+
+          {selectedOrderListItem !== null ? (
+            <div className="mt-6 grid min-h-0 flex-1 gap-5 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
+              <div className="flex min-h-0 flex-col gap-5">
+                <div className="rounded-[28px] border border-black/10 bg-stone-50 p-5">
+                  {detailLoading ? (
+                    <div className="space-y-3">
+                      <div className="h-5 w-28 animate-pulse rounded-full bg-neutral-200" />
+                      <div className="h-24 animate-pulse rounded-3xl bg-white" />
+                    </div>
+                  ) : detailError ? (
+                    <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {detailError}
+                    </div>
+                  ) : order ? (
+                    <div className="space-y-5">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-full bg-neutral-900 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+                            {order.orderNumber}
+                          </span>
+                          <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                            {order.stateName ?? 'Listo'}
+                          </span>
+                        </div>
+                        <h3 className="mt-4 text-2xl font-semibold text-neutral-950">
+                          {order.customerName}
+                        </h3>
+                        <p className="mt-1 text-sm text-neutral-500">{order.deliveryLabel}</p>
+                      </div>
+
+                      <div className="grid gap-3">
+                        <div className="rounded-2xl bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-wide text-neutral-500">Whatsapp</p>
+                          <p className="mt-1 font-medium text-neutral-900">{order.customerWhatsapp}</p>
+                        </div>
+                        <div className="rounded-2xl bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-wide text-neutral-500">Pago</p>
+                          <p className="mt-1 font-medium text-neutral-900">{order.paymentMethod}</p>
+                        </div>
+                        <div className="rounded-2xl bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-wide text-neutral-500">Total</p>
+                          <p className="mt-1 font-medium text-neutral-900">{order.totalLabel}</p>
+                        </div>
+                      </div>
+
+                      {order.notes ? (
+                        <div className="rounded-2xl bg-white px-4 py-3">
+                          <p className="text-xs uppercase tracking-wide text-neutral-500">Notas</p>
+                          <p className="mt-2 text-sm leading-6 text-neutral-700">{order.notes}</p>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-neutral-500">No se pudo cargar la orden.</div>
+                  )}
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <button
+                    type="button"
+                    disabled={!selectedOrderListItem || detailLoading || !!detailError || !!currentOrderIsCancelling}
+                    onClick={() => {
+                      if (!selectedOrderListItem) {
+                        return;
+                      }
+
+                      const shouldDeliver = window.confirm(
+                        `Marcar ${selectedOrderListItem.orderNumber} como entregado?`,
+                      );
+                      if (shouldDeliver) {
+                        void deliverOrder(selectedOrderListItem);
+                      }
+                    }}
+                    className="rounded-2xl bg-emerald-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                  >
+                    {currentOrderIsDelivering ? 'Marcando entrega...' : 'Marcar como entregado'}
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={!selectedOrderListItem || detailLoading || !!detailError || !!currentOrderIsDelivering}
+                    onClick={() => {
+                      if (!selectedOrderListItem) {
+                        return;
+                      }
+
+                      const shouldCancel = window.confirm(
+                        `Cancelar ${selectedOrderListItem.orderNumber}?`,
+                      );
+                      if (shouldCancel) {
+                        void cancelOrder(selectedOrderListItem);
+                      }
+                    }}
+                    className="rounded-2xl bg-red-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                  >
+                    {currentOrderIsCancelling ? 'Cancelando...' : 'Cancelar orden'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="min-h-0 overflow-hidden rounded-[28px] border border-black/10 bg-white">
+                <div className="border-b border-black/10 px-5 py-4">
+                  <h3 className="text-lg font-semibold text-neutral-950">Detalle de productos</h3>
+                  <p className="mt-1 text-sm text-neutral-500">
+                    Verifica rapidamente el contenido final antes de cerrar la entrega.
+                  </p>
+                </div>
+
+                <div className="min-h-0 max-h-full overflow-y-auto p-5">
+                  {detailLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 4 }).map((_, index) => (
+                        <div key={index} className="h-24 animate-pulse rounded-3xl bg-stone-100" />
+                      ))}
+                    </div>
+                  ) : detailError ? (
+                    <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                      {detailError}
+                    </div>
+                  ) : currentProducts.length > 0 ? (
+                    <div className="space-y-3">
+                      {currentProducts.map((line) => (
+                        <div
+                          key={line.id}
+                          className="rounded-3xl border border-black/10 bg-stone-50 px-4 py-4"
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h4 className="text-lg font-semibold text-neutral-900">
+                                {line.productName}
+                              </h4>
+                              <p className="mt-1 text-sm text-neutral-500">
+                                Cantidad solicitada: {line.quantity}
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-neutral-700 shadow-sm">
+                              {line.subtotalLabel}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-black/10 bg-stone-50 px-4 py-6 text-sm text-neutral-500">
+                      La orden no tiene lineas cargadas.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </section>
+      </div>
+    </div>
+  );
+}

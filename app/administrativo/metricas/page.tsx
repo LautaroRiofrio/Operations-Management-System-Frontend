@@ -1,10 +1,5 @@
-import SectionPlaceholder from '@/app/components/sections/sectionPlaceholder';
+import MetricsSection from '@/app/components/sections/metricsSection';
 
 export default function MetricasPage() {
-  return (
-    <SectionPlaceholder
-      title="Metricas"
-      description="Esta seccion quedara reservada para metricas administrativas."
-    />
-  );
+  return <MetricsSection />;
 }
