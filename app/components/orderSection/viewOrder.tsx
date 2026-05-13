@@ -17,6 +17,8 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
   const stateIds = resolveProductionStateIds(statesResource.items);
+  const actionButtonClass =
+    'rounded-2xl px-5 py-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50';
 
   const handleCancelOrder = async () => {
     if (!order || !stateIds.cancelled) {
@@ -91,129 +93,157 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
       detailContent: (
         <div className="flex h-full flex-col gap-5">
           {cancelError ? (
-            <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
               {cancelError}
             </div>
           ) : null}
 
-          <div>
-            <h2 className="text-2xl font-bold">Cliente</h2>
-            <div className="flex flex-col gap-3 rounded-xl bg-white px-2 py-2">
-              <div className="flex gap-2">
-                <span className="font-bold">Nombre:</span>
-                <span className="w-full">{order.customerName}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="font-bold">Whatsapp:</span>
-                <span>{order.customerWhatsapp}</span>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold">Estado</h2>
-            <div className="flex gap-2">
-              <div className="flex-1 rounded-xl bg-white py-3 text-center">
-                {order.stateName ?? 'Sin estado'}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold">Metodo de pago</h2>
-            <div className="flex gap-2">
-              <div className="flex-1 rounded-xl bg-white py-3 text-center">
-                {order.paymentMethod}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold">Fecha de entrega</h2>
-            <div className="grid gap-4 rounded-2xl bg-white p-5">
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Entrega estimada</span>
-                <span>{order.deliveryLabel}</span>
-              </div>
-              {order.actualDeliveryLabel ? (
-                <div className="flex justify-between">
-                  <span className="text-neutral-500">Entrega real</span>
-                  <span>{order.actualDeliveryLabel}</span>
+          <div className="overflow-hidden rounded-[28px] border border-black/10 bg-[linear-gradient(135deg,_#171717_0%,_#404040_100%)] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.45)]">
+            <div className="space-y-4 px-6 py-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-white/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-stone-100">
+                        {order.orderNumber}
+                      </span>
+                      <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-stone-100">
+                        {order.stateName ?? 'Sin estado'}
+                      </span>
+                    </div>
+                    <h2 className="mt-4 text-3xl font-semibold tracking-tight">
+                      {order.customerName}
+                    </h2>
+                  </div>
                 </div>
-              ) : null}
-              {order.notes ? (
-                <div className="grid gap-2">
-                  <span className="text-neutral-500">Notas</span>
-                  <p>{order.notes}</p>
+
+                <div className="min-w-[180px] rounded-2xl bg-white/10 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-stone-300">Total</p>
+                  <p className="mt-2 text-2xl font-semibold">{order.totalLabel}</p>
                 </div>
-              ) : null}
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-white/10 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-stone-300">Entrega estimada</p>
+                  <p className="mt-2 font-medium text-white">{order.deliveryLabel}</p>
+                </div>
+
+                <div className="rounded-2xl bg-white/10 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-stone-300">Pago</p>
+                  <p className="mt-2 font-medium text-white">{order.paymentMethod}</p>
+                </div>
+              </div>
             </div>
           </div>
+
+          <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-[0_18px_50px_-42px_rgba(0,0,0,0.45)]">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-2xl font-semibold text-neutral-950">
+                  Cliente
+                </h3>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl bg-stone-50 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-neutral-500">Nombre</p>
+                  <p className="mt-1 font-medium text-neutral-900">{order.customerName}</p>
+                </div>
+
+                <div className="rounded-2xl bg-stone-50 px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-neutral-500">Whatsapp</p>
+                  <p className="mt-1 font-medium text-neutral-900">{order.customerWhatsapp}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
       ),
       productsContent: (
-        <div className="grid gap-3 rounded-2xl bg-white p-5">
-          <h3 className="text-lg font-semibold">Productos</h3>
-          {orderLines.length > 0 ? (
-            orderLines.map((line) => (
-              <div
-                key={line.id}
-                className="flex items-center justify-between gap-4 border-b border-neutral-200 pb-3 last:border-b-0 last:pb-0"
-              >
-                <div>
-                  <p className="font-medium">{line.productName}</p>
-                  <p className="text-sm text-neutral-500">Cantidad: {line.quantity}</p>
-                </div>
-                <span>{line.subtotalLabel}</span>
+        <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.28)]">
+          <div className="border-b border-black/10 px-5 py-5">
+            <h3 className="text-2xl font-semibold text-neutral-950">Detalle del pedido</h3>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">
+            {orderLines.length > 0 ? (
+              <div className="space-y-3">
+                {orderLines.map((line) => (
+                  <div
+                    key={line.id}
+                    className="rounded-3xl border border-black/10 bg-stone-50 px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h4 className="text-lg font-semibold text-neutral-900">
+                          {line.productName}
+                        </h4>
+                        <p className="mt-1 text-sm text-neutral-500">
+                          Cantidad solicitada: {line.quantity}
+                        </p>
+                      </div>
+
+                      <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-neutral-700 shadow-sm">
+                        {line.subtotalLabel}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))
-          ) : (
-            <p className="text-sm text-neutral-500">La orden no tiene lineas cargadas.</p>
-          )}
+            ) : (
+              <div className="rounded-2xl border border-dashed border-black/10 bg-stone-50 px-4 py-6 text-sm text-neutral-500">
+                La orden no tiene lineas cargadas.
+              </div>
+            )}
+          </div>
         </div>
       ),
     };
   })();
 
   return (
-    <div className="grid h-full min-h-0 grid-cols-2 gap-5 p-5">
-      <div className="flex min-h-0 flex-col gap-10 overflow-hidden">
-        {detailContent}
+    <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_28%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_48%,_#fafaf9_100%)]">
+      <div className="grid h-full min-h-0 gap-6 p-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+        <div className="flex min-h-0 flex-col gap-6 overflow-y-auto pr-1">
+          {detailContent}
 
-        <div className="grid gap-2 md:grid-cols-3">
-          <button
-            type="button"
-            className="h-full max-h-15 rounded-xl bg-white py-3 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!order || isCancelling}
-            onClick={() => {
-              setMode('editar');
-            }}
-          >
-            Editar pedido
-          </button>
-          <button
-            type="button"
-            disabled={!order || isCancelling || statesResource.loading}
-            onClick={() => {
-              void handleCancelOrder();
-            }}
-            className="h-full max-h-15 rounded-xl bg-red-600 py-3 font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
-          >
-            {isCancelling ? 'Cancelando...' : 'Cancelar orden'}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setMode('default');
-            }}
-            className="h-full max-h-15 rounded-xl bg-white py-3 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Volver
-          </button>
+          <div className="grid gap-3 md:grid-cols-3">
+            <button
+              type="button"
+              className={`${actionButtonClass} border border-black/10 bg-white text-neutral-900 hover:bg-stone-100`}
+              disabled={!order || isCancelling}
+              onClick={() => {
+                setMode('editar');
+              }}
+            >
+              Editar pedido
+            </button>
+            <button
+              type="button"
+              disabled={!order || isCancelling || statesResource.loading}
+              onClick={() => {
+                void handleCancelOrder();
+              }}
+              className={`${actionButtonClass} bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300`}
+            >
+              {isCancelling ? 'Cancelando...' : 'Cancelar orden'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('default');
+              }}
+              className={`${actionButtonClass} border border-black/10 bg-white text-neutral-900 hover:bg-stone-100`}
+            >
+              Volver
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div className="min-h-0 overflow-y-auto">{productsContent}</div>
+        <div className="min-h-0 overflow-hidden">{productsContent}</div>
+      </div>
     </div>
   );
 };
