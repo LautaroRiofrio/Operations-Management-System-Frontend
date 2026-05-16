@@ -1,6 +1,5 @@
 'use client'
 
-import { AnimatePresence, motion } from 'framer-motion';
 import { useProductionBoard } from '@/app/hooks/useProductionBoard';
 
 function buildLineKey(orderId: number, lineId: number) {
@@ -40,15 +39,9 @@ export default function ProductionSection() {
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
                 Estacion de produccion
               </p>
-              <div className="space-y-1">
-                <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">
-                  Preparacion en tiempo real
-                </h1>
-                <p className="max-w-2xl text-sm text-neutral-500">
-                  Activa pedidos desde pendientes, registra el avance por producto y libera la
-                  mesa apenas todo este completo.
-                </p>
-              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">
+                Preparacion en tiempo real
+              </h1>
             </div>
 
             <div className="grid min-w-[220px] gap-3 sm:grid-cols-2">
@@ -67,23 +60,17 @@ export default function ProductionSection() {
             </div>
           </div>
 
-          <AnimatePresence>
-            {banner ? (
-              <motion.div
-                key={banner.text}
-                initial={false}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${
-                  banner.tone === 'success'
-                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                    : 'border-red-200 bg-red-50 text-red-700'
-                }`}
-              >
-                {banner.text}
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
+          {banner ? (
+            <div
+              className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${
+                banner.tone === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              }`}
+            >
+              {banner.text}
+            </div>
+          ) : null}
 
           {hasStateConfigError ? (
             <div className="mt-5 rounded-3xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
@@ -103,7 +90,7 @@ export default function ProductionSection() {
               {Array.from({ length: 2 }).map((_, index) => (
                 <div
                   key={index}
-                  className="h-64 animate-pulse rounded-[28px] border border-slate-200 bg-slate-100"
+                  className="h-64 rounded-[28px] border border-slate-200 bg-slate-100"
                 />
               ))}
             </div>
@@ -126,30 +113,25 @@ export default function ProductionSection() {
 
           {currentOrder ? (
             <div className="mt-6 min-h-0 flex-1 overflow-y-auto pr-2">
-              <motion.div layout className="grid gap-5">
-                <AnimatePresence initial={false}>
-                  {(() => {
-                    const order = currentOrder;
-                    const completedProducts = order.products.filter((product) => {
-                      const lineKey = buildLineKey(order.id, product.id);
-                      return (producedByLine[lineKey] ?? 0) >= product.quantityRequired;
-                    }).length;
-                    const orderProgress =
-                      order.products.length === 0
-                        ? 0
-                        : Math.round((completedProducts / order.products.length) * 100);
-                    const isCompleting = activeOrderId === order.id && activeAction === 'complete';
-                    const isCancelling = activeOrderId === order.id && activeAction === 'cancel';
+              <div className="grid gap-5">
+                {(() => {
+                  const order = currentOrder;
+                  const completedProducts = order.products.filter((product) => {
+                    const lineKey = buildLineKey(order.id, product.id);
+                    return (producedByLine[lineKey] ?? 0) >= product.quantityRequired;
+                  }).length;
+                  const orderProgress =
+                    order.products.length === 0
+                      ? 0
+                      : Math.round((completedProducts / order.products.length) * 100);
+                  const isCompleting = activeOrderId === order.id && activeAction === 'complete';
+                  const isCancelling = activeOrderId === order.id && activeAction === 'cancel';
 
-                    return (
-                      <motion.article
-                        key={order.id}
-                        layout
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -18, scale: 0.98 }}
-                        transition={{ duration: 0.2, ease: 'easeOut' }}
-                        className="overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.35)]"
-                      >
+                  return (
+                    <article
+                      key={order.id}
+                      className="overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.35)]"
+                    >
                         <div className="border-b border-black/10 bg-[linear-gradient(135deg,_#171717_0%,_#404040_100%)] px-6 py-5 text-white">
                           <div className="flex flex-wrap items-start justify-between gap-4">
                             <div className="space-y-3">
@@ -175,10 +157,9 @@ export default function ProductionSection() {
                                 <span>{orderProgress}%</span>
                               </div>
                               <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                                <motion.div
+                                <div
                                   className="h-full rounded-full bg-amber-400"
-                                  animate={{ width: `${orderProgress}%` }}
-                                  transition={{ duration: 0.25 }}
+                                  style={{ width: `${orderProgress}%` }}
                                 />
                               </div>
                               <p className="mt-3 text-sm text-stone-200">
@@ -196,9 +177,8 @@ export default function ProductionSection() {
                             const detailsOpen = expandedLines[lineKey] ?? false;
 
                             return (
-                              <motion.div
+                              <div
                                 key={lineKey}
-                                layout
                                 className={`rounded-3xl border px-4 py-4 transition ${
                                   lineComplete
                                     ? 'border-emerald-200 bg-emerald-50'
@@ -249,64 +229,53 @@ export default function ProductionSection() {
                                 </div>
 
                                 <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                                  <motion.div
+                                  <div
                                     className={`h-full rounded-full ${
                                       lineComplete ? 'bg-emerald-500' : 'bg-neutral-900'
                                     }`}
-                                    animate={{
+                                    style={{
                                       width: `${Math.round(
                                         (producedQuantity / Math.max(product.quantityRequired, 1)) * 100,
                                       )}%`,
                                     }}
-                                    transition={{ duration: 0.2 }}
                                   />
                                 </div>
 
-                                <AnimatePresence initial={false}>
-                                  {detailsOpen ? (
-                                    <motion.div
-                                      initial={false}
-                                      animate={{ opacity: 1, height: 'auto' }}
-                                      exit={{ opacity: 0, height: 0 }}
-                                      transition={{ duration: 0.2 }}
-                                      className="overflow-hidden"
-                                    >
-                                      <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
-                                        <div className="mb-3 flex items-center justify-between">
-                                          <h4 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
-                                            Ingredientes
-                                          </h4>
-                                          <span className="text-xs text-neutral-400">
-                                            {product.ingredients.length} items
-                                          </span>
-                                        </div>
+                                {detailsOpen ? (
+                                  <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
+                                    <div className="mb-3 flex items-center justify-between">
+                                      <h4 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
+                                        Ingredientes
+                                      </h4>
+                                      <span className="text-xs text-neutral-400">
+                                        {product.ingredients.length} items
+                                      </span>
+                                    </div>
 
-                                        {product.ingredients.length > 0 ? (
-                                          <div className="grid gap-3">
-                                            {product.ingredients.map((ingredient) => (
-                                              <div
-                                                key={ingredient.id}
-                                                className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3"
-                                              >
-                                                <span className="font-medium text-neutral-800">
-                                                  {ingredient.name}
-                                                </span>
-                                                <span className="rounded-full bg-white px-3 py-1 text-sm text-neutral-600 shadow-sm">
-                                                  {ingredient.quantityLabel}
-                                                </span>
-                                              </div>
-                                            ))}
+                                    {product.ingredients.length > 0 ? (
+                                      <div className="grid gap-3">
+                                        {product.ingredients.map((ingredient) => (
+                                          <div
+                                            key={ingredient.id}
+                                            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3"
+                                          >
+                                            <span className="font-medium text-neutral-800">
+                                              {ingredient.name}
+                                            </span>
+                                            <span className="rounded-full bg-white px-3 py-1 text-sm text-neutral-600 shadow-sm">
+                                              {ingredient.quantityLabel}
+                                            </span>
                                           </div>
-                                        ) : (
-                                          <p className="text-sm text-neutral-500">
-                                            Este producto todavia no tiene receta cargada.
-                                          </p>
-                                        )}
+                                        ))}
                                       </div>
-                                    </motion.div>
-                                  ) : null}
-                                </AnimatePresence>
-                              </motion.div>
+                                    ) : (
+                                      <p className="text-sm text-neutral-500">
+                                        Este producto todavia no tiene receta cargada.
+                                      </p>
+                                    )}
+                                  </div>
+                                ) : null}
+                              </div>
                             );
                           })}
                         </div>
@@ -350,24 +319,17 @@ export default function ProductionSection() {
                             )}
                           </div>
                         </div>
-                      </motion.article>
-                    );
-                  })()}
-                </AnimatePresence>
-              </motion.div>
+                    </article>
+                  );
+                })()}
+              </div>
             </div>
           ) : null}
         </section>
 
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-[32px] border border-slate-200/80 bg-slate-900 text-slate-50 shadow-[0_24px_80px_-36px_rgba(15,23,42,0.7)]">
           <div className="border-b border-white/10 px-5 py-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
-              Cola operativa
-            </p>
-            <h2 className="mt-2 text-2xl font-semibold">Pedidos pendientes</h2>
-            <p className="mt-2 text-sm text-slate-400">
-              Selecciona un pedido para pasarlo automaticamente a produccion.
-            </p>
+            <h2 className="text-2xl font-semibold">Pedidos pendientes</h2>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
@@ -376,7 +338,7 @@ export default function ProductionSection() {
                 {Array.from({ length: 4 }).map((_, index) => (
                   <div
                     key={index}
-                    className="h-28 animate-pulse rounded-3xl bg-white/8"
+                    className="h-28 rounded-3xl bg-white/8"
                   />
                 ))}
               </div>
@@ -396,53 +358,38 @@ export default function ProductionSection() {
               </div>
             ) : null}
 
-            <motion.div layout className="space-y-3">
-              <AnimatePresence initial={false}>
-                {pendingOrders.map((order) => {
-                  const isStarting = activeOrderId === order.id && activeAction === 'start';
+            <div className="space-y-3">
+              {pendingOrders.map((order) => {
+                const isStarting = activeOrderId === order.id && activeAction === 'start';
 
-                  return (
-                    <motion.button
-                      key={order.id}
-                      layout
-                      type="button"
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 24 }}
-                      transition={{ duration: 0.18, ease: 'easeOut' }}
-                      onClick={() => void startOrder(order)}
-                      disabled={isStarting}
-                      className="w-full rounded-[28px] border border-white/10 bg-white/6 p-4 text-left transition hover:border-amber-300/50 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-2">
-                          <span className="inline-flex rounded-full bg-amber-400/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
-                            {order.orderNumber}
-                          </span>
-                          <div>
-                            <h3 className="text-lg font-semibold text-white">{order.customerName}</h3>
-                            <p className="mt-1 text-sm text-slate-300">{order.deliveryLabel}</p>
-                          </div>
-                        </div>
-
-                        <div className="text-right">
-                          <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
-                          <p className="mt-1 font-medium text-slate-100">{order.totalLabel}</p>
+                return (
+                  <button
+                    key={order.id}
+                    type="button"
+                    onClick={() => void startOrder(order)}
+                    disabled={isStarting}
+                    className="w-full rounded-[28px] border border-white/10 bg-white/6 p-4 text-left transition hover:border-amber-300/50 hover:bg-white/10 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="space-y-2">
+                        <span className="inline-flex rounded-full bg-amber-400/20 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
+                          {order.orderNumber}
+                        </span>
+                        <div>
+                          <h3 className="text-lg font-semibold text-white">{order.customerName}</h3>
+                          <p className="mt-1 text-sm text-slate-300">{order.deliveryLabel}</p>
                         </div>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-slate-950/30 px-4 py-3">
-                        <span className="text-sm text-slate-300">
-                          {isStarting ? 'Moviendo a produccion...' : 'Iniciar preparacion'}
-                        </span>
-                        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
-                          Pendiente
-                        </span>
+                      <div className="text-right">
+                        <p className="text-xs uppercase tracking-wide text-slate-500">Total</p>
+                        <p className="mt-1 font-medium text-slate-100">{order.totalLabel}</p>
                       </div>
-                    </motion.button>
-                  );
-                })}
-              </AnimatePresence>
-            </motion.div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </aside>
       </div>
