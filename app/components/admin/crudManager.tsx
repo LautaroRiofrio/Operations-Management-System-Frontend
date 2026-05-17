@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react';
+import ConfirmationDialog from '@/app/components/confirmationDialog';
+import { useConfirmationDialog } from '@/app/hooks/useConfirmationDialog';
 import type { CrudFormValues } from '@/types';
 
 type SelectOption = {
@@ -71,6 +73,13 @@ export default function CrudManager<TItem>({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const {
+    askForConfirmation,
+    closeConfirmation,
+    confirm,
+    confirmation,
+    isConfirming,
+  } = useConfirmationDialog();
 
   const resetForm = () => {
     setEditingId(null);
@@ -117,27 +126,30 @@ export default function CrudManager<TItem>({
 
   const handleDelete = async (item: TItem) => {
     const itemId = getItemId(item);
-    const shouldDelete = window.confirm(`Eliminar "${getItemLabel(item)}"?`);
+    askForConfirmation({
+      confirmLabel: 'Eliminar',
+      message: `Eliminar "${getItemLabel(item)}"?`,
+      onConfirm: async () => {
+        setDeletingId(itemId);
+        setSubmitError(null);
 
-    if (!shouldDelete) {
-      return;
-    }
-
-    setDeletingId(itemId);
-    setSubmitError(null);
-
-    try {
-      await onDelete(item);
-      if (editingId === itemId) {
-        resetForm();
-      }
-    } catch (requestError) {
-      const message =
-        requestError instanceof Error ? requestError.message : 'No se pudo eliminar el registro.';
-      setSubmitError(message);
-    } finally {
-      setDeletingId(null);
-    }
+        try {
+          await onDelete(item);
+          if (editingId === itemId) {
+            resetForm();
+          }
+        } catch (requestError) {
+          const message =
+            requestError instanceof Error ? requestError.message : 'No se pudo eliminar el registro.';
+          setSubmitError(message);
+          throw requestError;
+        } finally {
+          setDeletingId(null);
+        }
+      },
+      title: 'Confirmar eliminacion',
+      tone: 'danger',
+    });
   };
 
   return (
@@ -315,6 +327,18 @@ export default function CrudManager<TItem>({
           </div>
         </div>
       ) : null}
+
+      <ConfirmationDialog
+        cancelLabel={confirmation?.cancelLabel}
+        confirmLabel={confirmation?.confirmLabel}
+        isConfirming={isConfirming}
+        isOpen={confirmation !== null}
+        message={confirmation?.message ?? ''}
+        onCancel={closeConfirmation}
+        onConfirm={() => void confirm()}
+        title={confirmation?.title}
+        tone={confirmation?.tone}
+      />
     </>
   );
 }

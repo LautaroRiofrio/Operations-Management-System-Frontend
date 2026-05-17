@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import ClientSelectorModal from '@/app/components/orderSection/clientSelectorModal';
+import CreateClientModal from '@/app/components/orderSection/createClientModal';
 import Products from '@/app/components/orderSection/products';
 import { useOrderCatalog } from '@/app/hooks/useOrderCatalog';
 import { useOrderDetails } from '@/app/hooks/useOrderDetails';
@@ -83,6 +84,7 @@ export default function OrderFormBase({
   variant,
 }: OrderFormBaseProps) {
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [isCreateClientModalOpen, setIsCreateClientModalOpen] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | 'all'>('all');
   const resolvedOrderId = selectedOrderId ?? null;
   const isEditing = variant === 'edit';
@@ -192,11 +194,13 @@ export default function OrderFormBase({
                   <p className="truncate text-base font-medium">
                     {values.customer?.name ?? 'Seleccionar cliente'}
                   </p>
-                  <p className="text-sm text-neutral-500">
-                    {isEditing
-                      ? 'El cliente no se puede modificar durante la edición.'
-                      : values.customer?.whatsapp ?? 'Abrí el modal para buscar desde la API.'}
-                  </p>
+                  {isEditing ? (
+                    <p className="text-sm text-neutral-500">
+                      El cliente no se puede modificar durante la edición.
+                    </p>
+                  ) : values.customer?.whatsapp ? (
+                    <p className="text-sm text-neutral-500">{values.customer.whatsapp}</p>
+                  ) : null}
                 </div>
               </button>
             </div>
@@ -355,8 +359,17 @@ export default function OrderFormBase({
       <ClientSelectorModal
         isOpen={!isEditing && isClientModalOpen}
         onClose={() => setIsClientModalOpen(false)}
+        onCreateRequest={() => setIsCreateClientModalOpen(true)}
         onSelect={setCustomer}
         selectedCustomerId={values.customer?.id ?? null}
+      />
+      <CreateClientModal
+        isOpen={!isEditing && isCreateClientModalOpen}
+        onClose={() => setIsCreateClientModalOpen(false)}
+        onCreated={(customer) => {
+          setCustomer(customer);
+          setIsCreateClientModalOpen(false);
+        }}
       />
     </>
   );

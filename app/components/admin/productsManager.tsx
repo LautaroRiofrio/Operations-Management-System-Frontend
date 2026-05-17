@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react';
+import ConfirmationDialog from '@/app/components/confirmationDialog';
+import { useConfirmationDialog } from '@/app/hooks/useConfirmationDialog';
 import { useCrudResource } from '@/app/hooks/useCrudResource';
 import {
   createProduct,
@@ -88,6 +90,13 @@ export default function ProductsManager() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const {
+    askForConfirmation,
+    closeConfirmation,
+    confirm,
+    confirmation,
+    isConfirming,
+  } = useConfirmationDialog();
 
   const categories = categoriesResource.items as Category[];
   const ingredients = ingredientsResource.items as Ingredient[];
@@ -185,25 +194,29 @@ export default function ProductsManager() {
   };
 
   const handleDelete = async (product: ProductExpanded) => {
-    const shouldDelete = window.confirm(`Eliminar "${product.nombre}"?`);
-    if (!shouldDelete) {
-      return;
-    }
+    askForConfirmation({
+      confirmLabel: 'Eliminar',
+      message: `Eliminar "${product.nombre}"?`,
+      onConfirm: async () => {
+        setDeletingId(product.id);
+        setSubmitError(null);
 
-    setDeletingId(product.id);
-    setSubmitError(null);
-
-    try {
-      await deleteProduct(product.id);
-      await refreshAll();
-      if (editingId === product.id) {
-        resetForm();
-      }
-    } catch (requestError) {
-      setSubmitError(getApiErrorMessage(requestError, 'No se pudo eliminar el producto.'));
-    } finally {
-      setDeletingId(null);
-    }
+        try {
+          await deleteProduct(product.id);
+          await refreshAll();
+          if (editingId === product.id) {
+            resetForm();
+          }
+        } catch (requestError) {
+          setSubmitError(getApiErrorMessage(requestError, 'No se pudo eliminar el producto.'));
+          throw requestError;
+        } finally {
+          setDeletingId(null);
+        }
+      },
+      title: 'Confirmar eliminacion',
+      tone: 'danger',
+    });
   };
 
   const handleRecipeLineChange = (
@@ -510,6 +523,18 @@ export default function ProductsManager() {
           </div>
         </div>
       ) : null}
+
+      <ConfirmationDialog
+        cancelLabel={confirmation?.cancelLabel}
+        confirmLabel={confirmation?.confirmLabel}
+        isConfirming={isConfirming}
+        isOpen={confirmation !== null}
+        message={confirmation?.message ?? ''}
+        onCancel={closeConfirmation}
+        onConfirm={() => void confirm()}
+        title={confirmation?.title}
+        tone={confirmation?.tone}
+      />
     </>
   );
 }

@@ -1,5 +1,7 @@
 'use client'
 
+import ConfirmationDialog from '@/app/components/confirmationDialog';
+import { useConfirmationDialog } from '@/app/hooks/useConfirmationDialog';
 import { useProductionBoard } from '@/app/hooks/useProductionBoard';
 
 function buildLineKey(orderId: number, lineId: number) {
@@ -29,6 +31,13 @@ export default function ProductionSection() {
   const currentOrder = productionOrders[0] ?? null;
   const totalOrdersInProduction = productionOrders.length;
   const totalProductsInProgress = currentOrder?.products.length ?? 0;
+  const {
+    askForConfirmation,
+    closeConfirmation,
+    confirm,
+    confirmation,
+    isConfirming,
+  } = useConfirmationDialog();
 
   return (
     <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_32%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_45%,_#fafaf9_100%)]">
@@ -221,9 +230,12 @@ export default function ProductionSection() {
                                     <button
                                       type="button"
                                       onClick={() => toggleLine(order.id, product.id)}
+                                      aria-expanded={detailsOpen}
                                       className="rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm font-medium text-neutral-700 transition hover:border-black/20 hover:bg-stone-100"
                                     >
-                                      {detailsOpen ? 'Ocultar receta' : 'Ver receta'}
+                                      {detailsOpen
+                                        ? 'Ocultar receta'
+                                        : `Ver receta${product.ingredients.length > 0 ? ` (${product.ingredients.length})` : ''}`}
                                     </button>
                                   </div>
                                 </div>
@@ -242,31 +254,46 @@ export default function ProductionSection() {
                                 </div>
 
                                 {detailsOpen ? (
-                                  <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4">
-                                    <div className="mb-3 flex items-center justify-between">
-                                      <h4 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
-                                        Ingredientes
-                                      </h4>
-                                      <span className="text-xs text-neutral-400">
-                                        {product.ingredients.length} items
+                                  <div className="mt-4 rounded-2xl border border-black/10 bg-white p-4 shadow-sm">
+                                    <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-stone-200 pb-3">
+                                      <div>
+                                        <h4 className="text-sm font-semibold uppercase tracking-wide text-neutral-700">
+                                          Ingredientes
+                                        </h4>
+                                      </div>
+                                      <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-medium text-neutral-600">
+                                        {product.ingredients.length}{' '}
+                                        {product.ingredients.length === 1 ? 'ingrediente' : 'ingredientes'}
                                       </span>
                                     </div>
 
                                     {product.ingredients.length > 0 ? (
-                                      <div className="grid gap-3">
-                                        {product.ingredients.map((ingredient) => (
-                                          <div
-                                            key={ingredient.id}
-                                            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl bg-stone-50 px-4 py-3"
-                                          >
-                                            <span className="font-medium text-neutral-800">
-                                              {ingredient.name}
-                                            </span>
-                                            <span className="rounded-full bg-white px-3 py-1 text-sm text-neutral-600 shadow-sm">
-                                              {ingredient.quantityLabel}
-                                            </span>
-                                          </div>
-                                        ))}
+                                      <div className="overflow-hidden rounded-2xl border border-stone-200 bg-stone-50">
+                                        <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 border-b border-stone-200 bg-stone-100/80 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.2em] text-neutral-500">
+                                          <span>Ingrediente</span>
+                                          <span>Cantidad</span>
+                                        </div>
+
+                                        <div className="max-h-80 overflow-y-auto">
+                                          {product.ingredients.map((ingredient, index) => (
+                                            <div
+                                              key={ingredient.id}
+                                              className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-b border-stone-200 px-4 py-3 last:border-b-0"
+                                            >
+                                              <div className="flex min-w-0 items-center gap-3">
+                                                <span className="inline-flex h-7 w-7 flex-none items-center justify-center rounded-full bg-white text-xs font-semibold text-neutral-500 shadow-sm">
+                                                  {index + 1}
+                                                </span>
+                                                <span className="truncate font-medium text-neutral-800">
+                                                  {ingredient.name}
+                                                </span>
+                                              </div>
+                                              <span className="rounded-full bg-white px-3 py-1 text-sm font-medium tabular-nums text-neutral-700 shadow-sm">
+                                                {ingredient.quantityLabel}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
                                       </div>
                                     ) : (
                                       <p className="text-sm text-neutral-500">
@@ -292,10 +319,15 @@ export default function ProductionSection() {
                             <button
                               type="button"
                               onClick={() => {
-                                const shouldCancel = window.confirm(`Cancelar ${order.orderNumber}?`);
-                                if (shouldCancel) {
-                                  void cancelOrder(order);
-                                }
+                                askForConfirmation({
+                                  confirmLabel: 'Cancelar orden',
+                                  message: `Cancelar ${order.orderNumber}?`,
+                                  onConfirm: async () => {
+                                    await cancelOrder(order);
+                                  },
+                                  title: 'Confirmar cancelacion',
+                                  tone: 'danger',
+                                });
                               }}
                               disabled={isCompleting || isCancelling}
                               className="rounded-2xl bg-red-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
@@ -393,6 +425,18 @@ export default function ProductionSection() {
           </div>
         </aside>
       </div>
+
+      <ConfirmationDialog
+        cancelLabel={confirmation?.cancelLabel}
+        confirmLabel={confirmation?.confirmLabel}
+        isConfirming={isConfirming}
+        isOpen={confirmation !== null}
+        message={confirmation?.message ?? ''}
+        onCancel={closeConfirmation}
+        onConfirm={() => void confirm()}
+        title={confirmation?.title}
+        tone={confirmation?.tone}
+      />
     </div>
   );
 }

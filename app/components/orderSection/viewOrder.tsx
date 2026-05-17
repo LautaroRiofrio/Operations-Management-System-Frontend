@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react';
+import ConfirmationDialog from '@/app/components/confirmationDialog';
+import { useConfirmationDialog } from '@/app/hooks/useConfirmationDialog';
 import { useCrudResource } from '@/app/hooks/useCrudResource';
 import { useOrderDetails } from '@/app/hooks/useOrderDetails';
 import { listStates } from '@/app/services/adminServices';
@@ -16,6 +18,13 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
   const statesResource = useCrudResource(listStates, 'No se pudieron cargar los estados.');
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
+  const {
+    askForConfirmation,
+    closeConfirmation,
+    confirm,
+    confirmation,
+    isConfirming,
+  } = useConfirmationDialog();
   const stateIds = resolveProductionStateIds(statesResource.items);
   const actionButtonClass =
     'rounded-2xl px-5 py-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50';
@@ -26,22 +35,26 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
       return;
     }
 
-    const shouldCancel = window.confirm(`Cancelar ${order.orderNumber}?`);
-    if (!shouldCancel) {
-      return;
-    }
+    askForConfirmation({
+      confirmLabel: 'Cancelar orden',
+      message: `Cancelar ${order.orderNumber}?`,
+      onConfirm: async () => {
+        setIsCancelling(true);
+        setCancelError(null);
 
-    setIsCancelling(true);
-    setCancelError(null);
-
-    try {
-      await transitionOrderToState(order.id, stateIds.cancelled);
-      setMode('default');
-    } catch {
-      setCancelError('No se pudo cancelar la orden.');
-    } finally {
-      setIsCancelling(false);
-    }
+        try {
+          await transitionOrderToState(order.id, stateIds.cancelled);
+          setMode('default');
+        } catch {
+          setCancelError('No se pudo cancelar la orden.');
+          throw new Error('No se pudo cancelar la orden.');
+        } finally {
+          setIsCancelling(false);
+        }
+      },
+      title: 'Confirmar cancelacion',
+      tone: 'danger',
+    });
   };
 
   const { detailContent, productsContent } = (() => {
@@ -204,47 +217,61 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
   })();
 
   return (
-    <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_28%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_48%,_#fafaf9_100%)]">
-      <div className="grid h-full min-h-0 gap-6 p-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-        <div className="flex min-h-0 flex-col gap-6 overflow-y-auto pr-1">
-          {detailContent}
+    <>
+      <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_28%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_48%,_#fafaf9_100%)]">
+        <div className="grid h-full min-h-0 gap-6 p-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
+          <div className="flex min-h-0 flex-col gap-6 overflow-y-auto pr-1">
+            {detailContent}
 
-          <div className="grid gap-3 md:grid-cols-3">
-            <button
-              type="button"
-              className={`${actionButtonClass} border border-black/10 bg-white text-neutral-900 hover:bg-stone-100`}
-              disabled={!order || isCancelling}
-              onClick={() => {
-                setMode('editar');
-              }}
-            >
-              Editar pedido
-            </button>
-            <button
-              type="button"
-              disabled={!order || isCancelling || statesResource.loading}
-              onClick={() => {
-                void handleCancelOrder();
-              }}
-              className={`${actionButtonClass} bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300`}
-            >
-              {isCancelling ? 'Cancelando...' : 'Cancelar orden'}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('default');
-              }}
-              className={`${actionButtonClass} border border-black/10 bg-white text-neutral-900 hover:bg-stone-100`}
-            >
-              Volver
-            </button>
+            <div className="grid gap-3 md:grid-cols-3">
+              <button
+                type="button"
+                className={`${actionButtonClass} border border-black/10 bg-white text-neutral-900 hover:bg-stone-100`}
+                disabled={!order || isCancelling}
+                onClick={() => {
+                  setMode('editar');
+                }}
+              >
+                Editar pedido
+              </button>
+              <button
+                type="button"
+                disabled={!order || isCancelling || statesResource.loading}
+                onClick={() => {
+                  void handleCancelOrder();
+                }}
+                className={`${actionButtonClass} bg-red-600 text-white hover:bg-red-700 disabled:bg-red-300`}
+              >
+                {isCancelling ? 'Cancelando...' : 'Cancelar orden'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('default');
+                }}
+                className={`${actionButtonClass} border border-black/10 bg-white text-neutral-900 hover:bg-stone-100`}
+              >
+                Volver
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className="min-h-0 overflow-hidden">{productsContent}</div>
+          <div className="min-h-0 overflow-hidden">{productsContent}</div>
+        </div>
       </div>
-    </div>
+
+      <ConfirmationDialog
+        cancelLabel={confirmation?.cancelLabel}
+        confirmLabel={confirmation?.confirmLabel}
+        isConfirming={isConfirming}
+        isOpen={confirmation !== null}
+        message={confirmation?.message ?? ''}
+        onCancel={closeConfirmation}
+        onConfirm={() => void confirm()}
+        title={confirmation?.title}
+        tone={confirmation?.tone}
+      />
+    </>
   );
 };
 

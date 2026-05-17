@@ -1,6 +1,8 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion';
+import ConfirmationDialog from '@/app/components/confirmationDialog';
+import { useConfirmationDialog } from '@/app/hooks/useConfirmationDialog';
 import { useDeliveryBoard } from '@/app/hooks/useDeliveryBoard';
 
 export default function DeliverySection() {
@@ -29,32 +31,20 @@ export default function DeliverySection() {
     selectedOrderListItem && activeOrderId === selectedOrderListItem.id && activeAction === 'deliver';
   const currentOrderIsCancelling =
     selectedOrderListItem && activeOrderId === selectedOrderListItem.id && activeAction === 'cancel';
+  const {
+    askForConfirmation,
+    closeConfirmation,
+    confirm,
+    confirmation,
+    isConfirming,
+  } = useConfirmationDialog();
 
   return (
     <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_30%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_45%,_#fafaf9_100%)]">
-      <div className="grid h-full min-h-0 gap-6 p-6 xl:grid-cols-[380px_minmax(0,1fr)]">
+      <div className="grid h-full min-h-0 gap-6 p-6 xl:grid-cols-[minmax(0,40%)_minmax(0,60%)]">
         <aside className="flex min-h-0 flex-col overflow-hidden rounded-[32px] border border-black/10 bg-neutral-950 text-white shadow-[0_24px_80px_-36px_rgba(0,0,0,0.55)]">
           <div className="border-b border-white/10 px-5 py-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
-              Despacho
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold">Pedidos listos</h1>
-            <p className="mt-2 text-sm text-neutral-400">
-              Abre un pedido para revisar el detalle final y cerrarlo como entregado o cancelado.
-            </p>
-          </div>
-
-          <div className="grid gap-3 border-b border-white/10 px-5 py-4 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">En cola</p>
-              <p className="mt-2 text-3xl font-semibold">{readyOrders.length}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-              <p className="text-xs uppercase tracking-wide text-neutral-500">Seleccionado</p>
-              <p className="mt-2 text-lg font-semibold">
-                {selectedOrderListItem?.orderNumber ?? '-'}
-              </p>
-            </div>
+            <h1 className="text-2xl font-semibold">Despacho</h1>
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
@@ -86,7 +76,7 @@ export default function DeliverySection() {
               </div>
             ) : null}
 
-            <div className="space-y-3">
+            <div className="grid gap-3 2xl:grid-cols-2">
               <AnimatePresence initial={false}>
                 {readyOrders.map((readyOrder) => {
                   const isSelected = readyOrder.id === selectedOrderId;
@@ -123,14 +113,11 @@ export default function DeliverySection() {
                         </div>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-                        <span className="text-sm text-neutral-300">
-                          {isWorking ? 'Procesando cierre...' : 'Abrir detalle'}
-                        </span>
-                        <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-200">
-                          Listo
-                        </span>
-                      </div>
+                      {isWorking ? (
+                        <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
+                          <span className="text-sm text-neutral-300">Procesando cierre...</span>
+                        </div>
+                      ) : null}
                     </motion.button>
                   );
                 })}
@@ -142,28 +129,10 @@ export default function DeliverySection() {
         <section className="flex min-h-0 flex-col overflow-hidden rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.24)]">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-black/10 pb-5">
             <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
-                Entrega final
-              </p>
               <div className="space-y-1">
-                <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">
-                  Confirmacion de salida
-                </h2>
-                <p className="max-w-2xl text-sm text-neutral-500">
-                  Revisa la orden lista, valida sus productos y cierra la operacion como entregada
-                  o cancelada.
-                </p>
+                <h2 className="text-3xl font-semibold tracking-tight text-neutral-950">Detalle</h2>
               </div>
             </div>
-
-            {selectedOrderListItem ? (
-              <div className="rounded-2xl border border-black/10 bg-stone-50 px-4 py-3">
-                <p className="text-xs uppercase tracking-wide text-neutral-500">Orden activa</p>
-                <p className="mt-2 text-lg font-semibold text-neutral-900">
-                  {selectedOrderListItem.orderNumber}
-                </p>
-              </div>
-            ) : null}
           </div>
 
           <AnimatePresence>
@@ -274,12 +243,14 @@ export default function DeliverySection() {
                         return;
                       }
 
-                      const shouldDeliver = window.confirm(
-                        `Marcar ${selectedOrderListItem.orderNumber} como entregado?`,
-                      );
-                      if (shouldDeliver) {
-                        void deliverOrder(selectedOrderListItem);
-                      }
+                      askForConfirmation({
+                        confirmLabel: 'Marcar como entregado',
+                        message: `Marcar ${selectedOrderListItem.orderNumber} como entregado?`,
+                        onConfirm: async () => {
+                          await deliverOrder(selectedOrderListItem);
+                        },
+                        title: 'Confirmar entrega',
+                      });
                     }}
                     className="rounded-2xl bg-emerald-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:bg-emerald-300"
                   >
@@ -294,12 +265,15 @@ export default function DeliverySection() {
                         return;
                       }
 
-                      const shouldCancel = window.confirm(
-                        `Cancelar ${selectedOrderListItem.orderNumber}?`,
-                      );
-                      if (shouldCancel) {
-                        void cancelOrder(selectedOrderListItem);
-                      }
+                      askForConfirmation({
+                        confirmLabel: 'Cancelar orden',
+                        message: `Cancelar ${selectedOrderListItem.orderNumber}?`,
+                        onConfirm: async () => {
+                          await cancelOrder(selectedOrderListItem);
+                        },
+                        title: 'Confirmar cancelacion',
+                        tone: 'danger',
+                      });
                     }}
                     className="rounded-2xl bg-red-600 px-5 py-4 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
                   >
@@ -361,6 +335,18 @@ export default function DeliverySection() {
           ) : null}
         </section>
       </div>
+
+      <ConfirmationDialog
+        cancelLabel={confirmation?.cancelLabel}
+        confirmLabel={confirmation?.confirmLabel}
+        isConfirming={isConfirming}
+        isOpen={confirmation !== null}
+        message={confirmation?.message ?? ''}
+        onCancel={closeConfirmation}
+        onConfirm={() => void confirm()}
+        title={confirmation?.title}
+        tone={confirmation?.tone}
+      />
     </div>
   );
 }
