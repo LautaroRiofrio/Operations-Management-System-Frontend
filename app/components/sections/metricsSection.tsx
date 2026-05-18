@@ -341,9 +341,6 @@ function StateDetailChart({
             Detalle del estado
           </p>
           <h3 className="mt-2 text-xl font-semibold text-neutral-950">{stateName}</h3>
-          <p className="mt-2 text-sm text-neutral-500">
-            Cada barra representa una ocurrencia del estado en una orden entregada del periodo consultado.
-          </p>
         </div>
 
         <button
@@ -669,10 +666,6 @@ function StateCycleTimeCard({
         <h2 className="mt-2 text-2xl font-semibold text-neutral-950">
           Cuellos de botella del flujo entregado
         </h2>
-        <p className="mt-2 text-sm text-neutral-500">
-          Analiza cuanto tiempo permanecen las ordenes entregadas en cada estado no final y
-          destaca donde conviene intervenir primero.
-        </p>
       </div>
 
       <div className="mt-6">
@@ -685,9 +678,6 @@ function StateCycleTimeCard({
               <p className="mt-2 text-sm font-medium text-neutral-900">
                 {formatDateLabel(appliedDateRange.startDate)} al {formatDateLabel(appliedDateRange.endDate)}
               </p>
-            </div>
-            <div className="rounded-full bg-stone-100 px-3 py-2 text-xs font-medium text-neutral-600">
-              {report.isDefaultRange ? 'Rango default del backend' : 'Rango personalizado'}
             </div>
           </div>
 
