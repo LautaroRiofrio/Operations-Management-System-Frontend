@@ -26,8 +26,9 @@ type UseOrderFormResult = {
     id: number;
     id_categoria: number;
     nombre: string;
-    precio: number;
+  precio: number;
   }) => void;
+  hasUnsavedChanges: boolean;
   removeLine: (productId: number) => void;
   setCustomer: (customer: OrderCustomerOption | null) => void;
   setEstimatedDelivery: (estimatedDelivery: string) => void;
@@ -41,6 +42,21 @@ type UseOrderFormResult = {
   updateLineQuantity: (productId: number, nextQuantity: number) => void;
   values: OrderFormValues;
 };
+
+function normalizeValues(values: OrderFormValues) {
+  return {
+    customerId: values.customer?.id ?? null,
+    estimatedDelivery: values.estimatedDelivery,
+    lines: values.lines.map((line) => ({
+      lineId: line.lineId,
+      productId: line.productId,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+    })),
+    paymentMethod: values.paymentMethod,
+    stateId: values.stateId,
+  };
+}
 
 function buildMutationInput(values: OrderFormValues): OrderMutationInput | null {
   if (!values.customer) {
@@ -98,6 +114,9 @@ export function useOrderForm({
     const lineTotal = (line.unitPrice ?? 0) * line.quantity;
     return total + lineTotal;
   }, 0);
+  const hasUnsavedChanges =
+    JSON.stringify(normalizeValues(values)) !==
+    JSON.stringify(normalizeValues(persistedValuesRef.current));
 
   const setCustomer = (customer: OrderCustomerOption | null) => {
     setValues((currentValues) => ({
@@ -256,6 +275,7 @@ export function useOrderForm({
 
   return {
     addProduct,
+    hasUnsavedChanges,
     removeLine,
     setCustomer,
     setEstimatedDelivery,

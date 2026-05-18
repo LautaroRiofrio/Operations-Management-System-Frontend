@@ -4,15 +4,35 @@ import OrderForm from './orderForm';
 import EditOrderForm from './editOrderForm';
 import EmptyOrder from './emptyOrder';
 import ViewOrder from './viewOrder';
-import type { OrderSectionProps } from '@/types';
+import type { OrderFormBaseProps, OrderSectionProps } from '@/types';
 
-const OrderSection = ({ defaultStateId, setMode, mode, selectedOrderId }: OrderSectionProps) => {
+const OrderSection = ({
+  defaultStateId,
+  mode,
+  onUnsavedChangesChange,
+  selectedOrderId,
+  setMode,
+}: OrderSectionProps & Pick<OrderFormBaseProps, 'onUnsavedChangesChange'>) => {
   const renderContent = () => {
     switch (mode) {
       case 'crear':
-        return <OrderForm defaultStateId={defaultStateId} setMode={setMode} mode={mode} />;
+        return (
+          <OrderForm
+            defaultStateId={defaultStateId}
+            onUnsavedChangesChange={onUnsavedChangesChange}
+            setMode={setMode}
+            mode={mode}
+          />
+        );
       case 'editar':
-        return <EditOrderForm selectedOrderId={selectedOrderId} setMode={setMode} mode={mode} />;
+        return (
+          <EditOrderForm
+            onUnsavedChangesChange={onUnsavedChangesChange}
+            selectedOrderId={selectedOrderId}
+            setMode={setMode}
+            mode={mode}
+          />
+        );
       case 'ver':
         return <ViewOrder selectedOrderId={selectedOrderId} setMode={setMode} mode={mode} />
       case "default":

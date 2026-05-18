@@ -1,8 +1,10 @@
 'use client'
 
 import { useDeferredValue, useState } from 'react';
+import ConfirmationDialog from '@/app/components/confirmationDialog';
 import Order from '@/app/components/order/order';
 import OrderSection from '@/app/components/orderSection/orderSection';
+import { useConfirmationDialog } from '@/app/hooks/useConfirmationDialog';
 import { useCrudResource } from '@/app/hooks/useCrudResource';
 import { useOrdersByState } from '@/app/hooks/useOrdersByState';
 import { listStates } from '@/app/services/adminServices';
@@ -20,7 +22,15 @@ function normalizeSearchText(value: string) {
 
 export default function ReceptionSection() {
   const [mode, setMode] = useState<OrderMode>('default');
+  const [hasUnsavedOrderChanges, setHasUnsavedOrderChanges] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const {
+    askForConfirmation,
+    closeConfirmation,
+    confirm,
+    confirmation,
+    isConfirming,
+  } = useConfirmationDialog();
   const statesResource = useCrudResource(listStates, 'No se pudieron cargar los estados.');
   const states = statesResource.items.filter((state) => !state.es_final);
   const initialStateId = states[0]?.id ?? null;
@@ -43,9 +53,61 @@ export default function ReceptionSection() {
     return searchableText.includes(normalizedSearchQuery);
   });
 
+  const navigateTo = ({
+    nextMode,
+    nextOrderId,
+    nextStateId,
+  }: {
+    nextMode: OrderMode;
+    nextOrderId?: number | null;
+    nextStateId?: number | null;
+  }) => {
+    if (typeof nextStateId !== 'undefined') {
+      setSelectedStateOverride(nextStateId);
+    }
+
+    if (typeof nextOrderId !== 'undefined') {
+      setSelectedOrderId(nextOrderId);
+    }
+
+    setHasUnsavedOrderChanges(false);
+    setMode(nextMode);
+  };
+
+  const requestNavigation = ({
+    nextMode,
+    nextOrderId,
+    nextStateId,
+  }: {
+    nextMode: OrderMode;
+    nextOrderId?: number | null;
+    nextStateId?: number | null;
+  }) => {
+    if ((mode === 'crear' || mode === 'editar') && hasUnsavedOrderChanges) {
+      askForConfirmation({
+        cancelLabel: mode === 'editar' ? 'Continuar editando' : 'Continuar creando',
+        confirmLabel: 'Descartar cambios',
+        message:
+          mode === 'editar'
+            ? 'Hay cambios sin guardar. Quieres seguir editando esta orden o descartarlos para salir?'
+            : 'Hay cambios sin guardar. Quieres seguir creando esta orden o descartarlos para salir?',
+        onConfirm: () => {
+          navigateTo({ nextMode, nextOrderId, nextStateId });
+        },
+        title: 'Descartar cambios',
+        tone: 'danger',
+      });
+      return;
+    }
+
+    navigateTo({ nextMode, nextOrderId, nextStateId });
+  };
+
   const handleSelectOrder = (orderId: number) => {
-    setSelectedOrderId(orderId);
-    setMode('ver');
+    requestNavigation({
+      nextMode: 'ver',
+      nextOrderId: orderId,
+    });
   };
 
   return (
@@ -86,9 +148,11 @@ export default function ReceptionSection() {
                           : 'bg-white text-neutral-700 hover:bg-regal-gris hover:text-black'
                       }`}
                       onClick={() => {
-                        setSelectedStateOverride(state.id);
-                        setSelectedOrderId(null);
-                        setMode('default');
+                        requestNavigation({
+                          nextMode: 'default',
+                          nextOrderId: null,
+                          nextStateId: state.id,
+                        });
                       }}
                     >
                       {state.nombre}
@@ -143,8 +207,20 @@ export default function ReceptionSection() {
       <OrderSection
         defaultStateId={DEFAULT_NEW_ORDER_STATE_ID}
         mode={mode}
+        onUnsavedChangesChange={setHasUnsavedOrderChanges}
         selectedOrderId={selectedOrderId}
         setMode={setMode}
+      />
+      <ConfirmationDialog
+        cancelLabel={confirmation?.cancelLabel}
+        confirmLabel={confirmation?.confirmLabel}
+        isConfirming={isConfirming}
+        isOpen={confirmation !== null}
+        message={confirmation?.message ?? ''}
+        onCancel={closeConfirmation}
+        onConfirm={() => void confirm()}
+        title={confirmation?.title}
+        tone={confirmation?.tone}
       />
     </div>
   );

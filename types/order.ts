@@ -99,6 +99,7 @@ export type CreateCustomerInput = {
 
 export type OrderFormBaseProps = {
   defaultStateId?: number | null;
+  onUnsavedChangesChange?: (hasUnsavedChanges: boolean) => void;
   selectedOrderId?: number | null;
   setMode: SetOrderMode;
   variant: 'create' | 'edit';

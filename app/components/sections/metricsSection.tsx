@@ -1,7 +1,26 @@
 'use client'
 
+import { useRef, useState } from 'react';
+import { normalizeOrderDetail } from '@/app/lib/orderAdapters';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  LabelList,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useMetricsDashboard } from '@/app/hooks/useMetricsDashboard';
-import { formatCurrency } from '@/app/services/metricsServices';
+import { getOrderById } from '@/app/services/orderServices';
+import {
+  formatCurrency,
+  getMetricsStateDetails,
+  type MetricsStateDetail,
+} from '@/app/services/metricsServices';
+import type { OrderDetail } from '@/types';
 
 function getMaxValue(values: number[]) {
   return values.length > 0 ? Math.max(...values, 1) : 1;
@@ -12,7 +31,8 @@ function formatDateLabel(value: string | null) {
     return '-';
   }
 
-  const parsedDate = new Date(value);
+  const normalizedValue = value.includes(' ') ? value.replace(' ', 'T') : value;
+  const parsedDate = new Date(normalizedValue);
   if (Number.isNaN(parsedDate.getTime())) {
     return value;
   }
@@ -22,33 +42,79 @@ function formatDateLabel(value: string | null) {
   }).format(parsedDate);
 }
 
-function RevenueBarChart({
-  items,
+function formatDateTimeLabel(value: string | null) {
+  if (!value) {
+    return '-';
+  }
+
+  const normalizedValue = value.includes(' ') ? value.replace(' ', 'T') : value;
+  const parsedDate = new Date(normalizedValue);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat('es-AR', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(parsedDate);
+}
+
+function formatMinutesLabel(value: number) {
+  return new Intl.NumberFormat('es-AR', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
+  }).format(value);
+}
+
+function formatDateInputValue(value: string | null) {
+  if (!value) {
+    return '';
+  }
+
+  const normalizedValue = value.includes(' ') ? value.replace(' ', 'T') : value;
+  const parsedDate = new Date(normalizedValue);
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
+  const year = parsedDate.getFullYear();
+  const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+  const day = String(parsedDate.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function MetricsTooltip({
+  active,
+  label,
+  payload,
 }: {
-  items: { revenue: number; stateName: string }[];
+  active?: boolean;
+  label?: string;
+  payload?: Array<{ payload?: Record<string, unknown>; value?: number }>;
 }) {
-  const maxRevenue = getMaxValue(items.map((item) => item.revenue));
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const currentPayload = payload[0]?.payload ?? {};
+  const formattedValue =
+    typeof currentPayload.formattedValue === 'string'
+      ? currentPayload.formattedValue
+      : typeof payload[0]?.value === 'number'
+        ? `${formatMinutesLabel(payload[0].value)} min`
+        : '-';
+  const secondaryLabel =
+    typeof currentPayload.secondaryLabel === 'string' ? currentPayload.secondaryLabel : null;
+  const rangeLabel = typeof currentPayload.rangeLabel === 'string' ? currentPayload.rangeLabel : null;
 
   return (
-    <div className="grid gap-4">
-      {items.map((item) => {
-        const width = `${Math.max((item.revenue / maxRevenue) * 100, item.revenue > 0 ? 8 : 0)}%`;
-
-        return (
-          <div key={item.stateName} className="grid gap-2">
-            <div className="flex items-center justify-between gap-4">
-              <span className="text-sm font-medium text-neutral-800">{item.stateName}</span>
-              <span className="text-sm text-neutral-500">{formatCurrency(item.revenue)}</span>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-stone-200">
-              <div
-                className="h-full rounded-full bg-neutral-900 transition-[width]"
-                style={{ width }}
-              />
-            </div>
-          </div>
-        );
-      })}
+    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-lg">
+      <p className="text-sm font-semibold text-neutral-950">{label}</p>
+      <p className="mt-1 text-sm text-neutral-600">{formattedValue}</p>
+      {secondaryLabel ? <p className="mt-1 text-xs text-neutral-500">{secondaryLabel}</p> : null}
+      {rangeLabel ? <p className="mt-1 text-xs text-neutral-500">{rangeLabel}</p> : null}
     </div>
   );
 }
@@ -167,97 +233,514 @@ function DeliveryTimelineChart({
   );
 }
 
-function OrderDistributionChart({
+function StateCycleTimeChart({
   items,
+  onSelectState,
+  selectedStateId,
 }: {
-  items: { count: number; stateName: string }[];
+  items: {
+    averageFormatted: string;
+    averageMinutes: number;
+    recordCount: number;
+    stateId: number;
+    stateName: string;
+  }[];
+  onSelectState: (state: {
+    averageFormatted: string;
+    averageMinutes: number;
+    recordCount: number;
+    stateId: number;
+    stateName: string;
+  }) => void;
+  selectedStateId: number | null;
 }) {
-  const total = items.reduce((accumulator, item) => accumulator + item.count, 0);
-  const colors = ['#171717', '#44403c', '#78716c', '#a8a29e', '#d6d3d1', '#f59e0b'];
-
-  if (total === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-black/10 bg-stone-50 px-4 py-6 text-sm text-neutral-500">
-        No hay volumen de ordenes para mostrar la distribucion actual.
-      </div>
-    );
-  }
-
-  const segments = items.map((item, index) => {
-    const previousCount = items
-      .slice(0, index)
-      .reduce((accumulator, currentItem) => accumulator + currentItem.count, 0);
-
-    return {
-      color: colors[index % colors.length],
-      dash: (item.count / total) * 282.743,
-      offset: (previousCount / total) * 282.743,
-      stateName: item.stateName,
-    };
-  });
+  const chartData = items.map((item) => ({
+    ...item,
+    formattedValue: `${item.averageFormatted} (${formatMinutesLabel(item.averageMinutes)} min)`,
+    secondaryLabel: `${item.recordCount} registros relevados`,
+  }));
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[160px_minmax(0,1fr)] lg:items-center">
-      <div className="mx-auto h-40 w-40">
-        <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90">
-          {segments.map((segment) => (
-              <circle
-                key={segment.stateName}
-                cx="60"
-                cy="60"
-                r="45"
-                fill="transparent"
-                stroke={segment.color}
-                strokeWidth="18"
-                strokeDasharray={`${segment.dash} ${282.743 - segment.dash}`}
-                strokeDashoffset={-segment.offset}
-                strokeLinecap="butt"
+    <div className="rounded-[24px] border border-black/10 bg-white p-4">
+      <div className="h-[320px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={chartData}
+            layout="vertical"
+            margin={{ top: 8, right: 56, bottom: 8, left: 8 }}
+            barCategoryGap={18}
+          >
+            <CartesianGrid stroke="#e7e5e4" strokeDasharray="4 6" horizontal={false} />
+            <XAxis
+              type="number"
+              tick={{ fill: '#737373', fontSize: 12 }}
+              tickFormatter={(value: number) => `${formatMinutesLabel(value)} min`}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              type="category"
+              dataKey="stateName"
+              width={120}
+              tick={{ fill: '#171717', fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip content={<MetricsTooltip />} cursor={{ fill: 'rgba(245, 158, 11, 0.08)' }} />
+            <Bar dataKey="averageMinutes" radius={[0, 18, 18, 0]}>
+              <LabelList
+                dataKey="averageFormatted"
+                position="right"
+                offset={12}
+                fill="#171717"
+                fontSize={12}
               />
-          ))}
-          <circle cx="60" cy="60" r="28" fill="white" />
-          <text
-            x="60"
-            y="57"
-            textAnchor="middle"
-            className="fill-neutral-900 text-[16px] font-semibold"
-            transform="rotate(90 60 60)"
-          >
-            {total}
-          </text>
-          <text
-            x="60"
-            y="72"
-            textAnchor="middle"
-            className="fill-neutral-500 text-[8px]"
-            transform="rotate(90 60 60)"
-          >
-            ordenes
-          </text>
-        </svg>
+              {chartData.map((item) => (
+                <Cell
+                  key={item.stateId}
+                  fill={selectedStateId === item.stateId ? '#d97706' : '#f59e0b'}
+                  cursor="pointer"
+                  onClick={() => onSelectState(item)}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <p className="mt-4 text-xs uppercase tracking-wide text-neutral-500">
+        Click en un estado para ver el detalle de sus ocurrencias.
+      </p>
+    </div>
+  );
+}
+
+function StateDetailChart({
+  items,
+  onBack,
+  onSelectOrder,
+  stateName,
+}: {
+  items: MetricsStateDetail[];
+  onBack: () => void;
+  onSelectOrder: (orderId: number) => void;
+  stateName: string;
+}) {
+  const chartData = items.map((item) => ({
+    ...item,
+    formattedValue: item.timeFormatted,
+    orderLabel: `#${item.orderId}`,
+    rangeLabel: `${formatDateTimeLabel(item.start)} al ${formatDateTimeLabel(item.end)}`,
+    secondaryLabel: `${formatMinutesLabel(item.timeMinutes)} min`,
+  }));
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+            Detalle del estado
+          </p>
+          <h3 className="mt-2 text-xl font-semibold text-neutral-950">{stateName}</h3>
+          <p className="mt-2 text-sm text-neutral-500">
+            Cada barra representa una ocurrencia del estado en una orden entregada del periodo consultado.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-stone-100"
+        >
+          Volver a estados
+        </button>
       </div>
 
-      <div className="grid gap-3">
-        {items.map((item, index) => {
-          const percentage = Math.round((item.count / total) * 100);
-
-          return (
-            <div key={item.stateName} className="flex items-center justify-between gap-4 rounded-2xl bg-stone-50 px-4 py-3">
-              <div className="flex items-center gap-3">
-                <span
-                  className="h-3 w-3 rounded-full"
-                  style={{ backgroundColor: colors[index % colors.length] }}
+      <div className="rounded-[24px] border border-black/10 bg-white p-4">
+        <div className="h-[360px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 16, right: 12, bottom: 16, left: 0 }}>
+              <CartesianGrid stroke="#e7e5e4" strokeDasharray="4 6" vertical={false} />
+              <XAxis
+                dataKey="orderLabel"
+                tick={{ fill: '#171717', fontSize: 12 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fill: '#737373', fontSize: 12 }}
+                tickFormatter={(value: number) => `${formatMinutesLabel(value)} min`}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip content={<MetricsTooltip />} cursor={{ fill: 'rgba(245, 158, 11, 0.08)' }} />
+              <Bar dataKey="timeMinutes" radius={[18, 18, 0, 0]}>
+                <LabelList
+                  dataKey="formattedValue"
+                  position="top"
+                  offset={8}
+                  fill="#171717"
+                  fontSize={12}
                 />
-                <span className="text-sm font-medium text-neutral-800">{item.stateName}</span>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-semibold text-neutral-900">{item.count}</p>
-                <p className="text-xs text-neutral-500">{percentage}%</p>
-              </div>
-            </div>
-          );
-        })}
+                {chartData.map((item) => (
+                  <Cell
+                    key={`${item.orderId}-${item.start ?? 'sin-inicio'}-${item.end ?? 'sin-fin'}`}
+                    fill="#f59e0b"
+                    cursor="pointer"
+                    onClick={() => onSelectOrder(item.orderId)}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
+  );
+}
+
+function OrderDetailDrilldown({
+  onBack,
+  order,
+}: {
+  onBack: () => void;
+  order: OrderDetail;
+}) {
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+            Detalle de la orden
+          </p>
+          <h3 className="mt-2 text-xl font-semibold text-neutral-950">{order.orderNumber}</h3>
+          <p className="mt-2 text-sm text-neutral-500">
+            {order.customerName} · {order.stateName ?? 'Sin estado'}
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onBack}
+          className="rounded-2xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-stone-100"
+        >
+          Volver a tiempos por orden
+        </button>
+      </div>
+
+      <div className="overflow-hidden rounded-[28px] border border-black/10 bg-[linear-gradient(135deg,_#171717_0%,_#404040_100%)] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.45)]">
+        <div className="space-y-4 px-6 py-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-white/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-stone-100">
+                  {order.orderNumber}
+                </span>
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-stone-100">
+                  {order.stateName ?? 'Sin estado'}
+                </span>
+              </div>
+              <h4 className="mt-4 text-3xl font-semibold tracking-tight">{order.customerName}</h4>
+            </div>
+
+            <div className="min-w-[180px] rounded-2xl bg-white/10 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-stone-300">Total</p>
+              <p className="mt-2 text-2xl font-semibold">{order.totalLabel}</p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="rounded-2xl bg-white/10 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-stone-300">Entrega estimada</p>
+              <p className="mt-2 font-medium text-white">{order.deliveryLabel}</p>
+            </div>
+            <div className="rounded-2xl bg-white/10 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-stone-300">Entrega real</p>
+              <p className="mt-2 font-medium text-white">{order.actualDeliveryLabel ?? '-'}</p>
+            </div>
+            <div className="rounded-2xl bg-white/10 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-stone-300">Pago</p>
+              <p className="mt-2 font-medium text-white">{order.paymentMethod}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+        <div className="rounded-[28px] border border-black/10 bg-white p-5 shadow-[0_18px_50px_-42px_rgba(0,0,0,0.45)]">
+          <h4 className="text-2xl font-semibold text-neutral-950">Cliente</h4>
+          <div className="mt-4 grid gap-3">
+            <div className="rounded-2xl bg-stone-50 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Nombre</p>
+              <p className="mt-1 font-medium text-neutral-900">{order.customerName}</p>
+            </div>
+            <div className="rounded-2xl bg-stone-50 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-neutral-500">Whatsapp</p>
+              <p className="mt-1 font-medium text-neutral-900">{order.customerWhatsapp}</p>
+            </div>
+            {order.notes ? (
+              <div className="rounded-2xl bg-stone-50 px-4 py-3">
+                <p className="text-xs uppercase tracking-wide text-neutral-500">Notas</p>
+                <p className="mt-1 font-medium text-neutral-900">{order.notes}</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.28)]">
+          <div className="border-b border-black/10 px-5 py-5">
+            <h4 className="text-2xl font-semibold text-neutral-950">Detalle del pedido</h4>
+          </div>
+          <div className="p-5">
+            {order.lines.length > 0 ? (
+              <div className="space-y-3">
+                {order.lines.map((line) => (
+                  <div
+                    key={line.id}
+                    className="rounded-3xl border border-black/10 bg-stone-50 px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <h5 className="text-lg font-semibold text-neutral-900">{line.productName}</h5>
+                        <p className="mt-1 text-sm text-neutral-500">
+                          Cantidad solicitada: {line.quantity}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-neutral-700 shadow-sm">
+                        {line.subtotalLabel}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-black/10 bg-stone-50 px-4 py-6 text-sm text-neutral-500">
+                La orden no tiene lineas cargadas.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StateCycleTimeCard({
+  appliedDateRange,
+  report,
+}: {
+  appliedDateRange: { endDate: string; startDate: string };
+  report: {
+    averages: {
+      averageFormatted: string;
+      averageMinutes: number;
+      recordCount: number;
+      stateId: number;
+      stateName: string;
+    }[];
+    insights: { detail: string; title: string }[];
+    isDefaultRange: boolean;
+    orderCount: number;
+    rangeEnd: string | null;
+    rangeStart: string | null;
+  };
+}) {
+  const [selectedStateId, setSelectedStateId] = useState<number | null>(null);
+  const [selectedStateName, setSelectedStateName] = useState('');
+  const [detailItems, setDetailItems] = useState<MetricsStateDetail[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [selectedOrderDetail, setSelectedOrderDetail] = useState<OrderDetail | null>(null);
+  const [orderDetailLoading, setOrderDetailLoading] = useState(false);
+  const [orderDetailError, setOrderDetailError] = useState<string | null>(null);
+  const requestSequenceRef = useRef(0);
+  const orderRequestSequenceRef = useRef(0);
+
+  const clearDetails = () => {
+    requestSequenceRef.current += 1;
+    orderRequestSequenceRef.current += 1;
+    setSelectedStateId(null);
+    setSelectedStateName('');
+    setDetailItems([]);
+    setDetailError(null);
+    setDetailLoading(false);
+    setSelectedOrderDetail(null);
+    setOrderDetailLoading(false);
+    setOrderDetailError(null);
+  };
+
+  const clearOrderDrilldown = () => {
+    orderRequestSequenceRef.current += 1;
+    setSelectedOrderDetail(null);
+    setOrderDetailLoading(false);
+    setOrderDetailError(null);
+  };
+
+  const loadStateDetails = async (state: {
+    averageFormatted: string;
+    averageMinutes: number;
+    recordCount: number;
+    stateId: number;
+    stateName: string;
+  }) => {
+    if (selectedStateId === state.stateId) {
+      clearDetails();
+      return;
+    }
+
+    const requestId = requestSequenceRef.current + 1;
+    requestSequenceRef.current = requestId;
+
+      setSelectedStateId(state.stateId);
+      setSelectedStateName(state.stateName);
+      setDetailLoading(true);
+      setDetailError(null);
+      clearOrderDrilldown();
+
+    try {
+      const nextDetails = await getMetricsStateDetails(
+        state.stateId,
+        report.isDefaultRange
+          ? undefined
+          : {
+              endDate: report.rangeEnd ?? undefined,
+              startDate: report.rangeStart ?? undefined,
+            },
+      );
+
+      if (requestSequenceRef.current !== requestId) {
+        return;
+      }
+
+      setDetailItems(nextDetails);
+    } catch {
+      if (requestSequenceRef.current !== requestId) {
+        return;
+      }
+
+      setDetailItems([]);
+      setDetailError('No se pudo cargar el detalle de este estado.');
+    } finally {
+      if (requestSequenceRef.current === requestId) {
+        setDetailLoading(false);
+      }
+    }
+  };
+
+  const loadOrderDetail = async (orderId: number) => {
+    const requestId = orderRequestSequenceRef.current + 1;
+    orderRequestSequenceRef.current = requestId;
+
+    setOrderDetailLoading(true);
+    setOrderDetailError(null);
+    setSelectedOrderDetail(null);
+
+    try {
+      const response = await getOrderById(orderId);
+      const normalizedOrder = normalizeOrderDetail(response);
+
+      if (!normalizedOrder) {
+        throw new Error('Invalid order payload');
+      }
+
+      if (orderRequestSequenceRef.current !== requestId) {
+        return;
+      }
+
+      setSelectedOrderDetail(normalizedOrder);
+    } catch {
+      if (orderRequestSequenceRef.current !== requestId) {
+        return;
+      }
+
+      setOrderDetailError('No se pudo cargar el detalle de la orden.');
+    } finally {
+      if (orderRequestSequenceRef.current === requestId) {
+        setOrderDetailLoading(false);
+      }
+    }
+  };
+
+  return (
+    <section className="rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.18)]">
+      <div className="max-w-3xl">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+          Tiempos por estado
+        </p>
+        <h2 className="mt-2 text-2xl font-semibold text-neutral-950">
+          Cuellos de botella del flujo entregado
+        </h2>
+        <p className="mt-2 text-sm text-neutral-500">
+          Analiza cuanto tiempo permanecen las ordenes entregadas en cada estado no final y
+          destaca donde conviene intervenir primero.
+        </p>
+      </div>
+
+      <div className="mt-6">
+        <div className="rounded-[28px] border border-black/10 bg-stone-50 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 bg-white px-4 py-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+                Periodo aplicado
+              </p>
+              <p className="mt-2 text-sm font-medium text-neutral-900">
+                {formatDateLabel(appliedDateRange.startDate)} al {formatDateLabel(appliedDateRange.endDate)}
+              </p>
+            </div>
+            <div className="rounded-full bg-stone-100 px-3 py-2 text-xs font-medium text-neutral-600">
+              {report.isDefaultRange ? 'Rango default del backend' : 'Rango personalizado'}
+            </div>
+          </div>
+
+          <div className="mt-4">
+            {selectedStateId === null ? (
+              report.averages.length > 0 ? (
+                <StateCycleTimeChart
+                  items={report.averages}
+                  onSelectState={(state) => void loadStateDetails(state)}
+                  selectedStateId={selectedStateId}
+                />
+              ) : (
+                <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-6 text-sm text-neutral-500">
+                  No hay ordenes entregadas dentro del periodo seleccionado para calcular promedios por estado.
+                </div>
+              )
+            ) : detailLoading ? (
+              <div className="rounded-[24px] border border-black/10 bg-white p-5">
+                <div className="h-28 animate-pulse rounded-2xl bg-stone-100" />
+              </div>
+            ) : detailError ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+                {detailError}
+              </div>
+            ) : selectedOrderDetail ? (
+              <OrderDetailDrilldown
+                order={selectedOrderDetail}
+                onBack={clearOrderDrilldown}
+              />
+            ) : orderDetailLoading ? (
+              <div className="rounded-[24px] border border-black/10 bg-white p-5">
+                <div className="h-40 animate-pulse rounded-2xl bg-stone-100" />
+              </div>
+            ) : orderDetailError ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4 text-sm text-red-700">
+                {orderDetailError}
+              </div>
+            ) : detailItems.length > 0 ? (
+              <StateDetailChart
+                items={detailItems}
+                onBack={clearDetails}
+                onSelectOrder={(orderId) => void loadOrderDetail(orderId)}
+                stateName={selectedStateName}
+              />
+            ) : (
+              <div className="rounded-2xl border border-dashed border-black/10 bg-white px-4 py-6 text-sm text-neutral-500">
+                No hay ocurrencias del estado seleccionado dentro del periodo consultado.
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -319,7 +802,11 @@ function MissingMetricCard({
 }
 
 export default function MetricsSection() {
-  const { data, error, loading, refresh } = useMetricsDashboard();
+  const { data, dateRange, error, loading, refresh, setDateRange } = useMetricsDashboard();
+  const appliedDateRange = {
+    endDate: dateRange.endDate || data?.stateCycleTimes.rangeEnd || '',
+    startDate: dateRange.startDate || data?.stateCycleTimes.rangeStart || '',
+  };
 
   if (loading && !data) {
     return (
@@ -348,33 +835,58 @@ export default function MetricsSection() {
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
                 Dashboard administrativo
               </p>
-              <div className="space-y-1">
-                <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">
-                  Metricas operativas
-                </h1>
-                <p className="max-w-3xl text-sm text-neutral-500">
-                  Vista consolidada del volumen actual, facturacion proyectada, clientes mas
-                  activos y horarios de entrega. Las metricas de margen y tiempos por estado quedan
-                  visibles con su dependencia explicita de backend.
-                </p>
-                {data ? (
-                  <p className="text-sm text-neutral-400">
-                    Facturacion y ticket usando
-                    {' '}
-                    {data.summary.isDefaultBillingRange ? 'el rango mensual por defecto' : 'un rango personalizado'}
-                    : {formatDateLabel(data.summary.billingPeriodStart)} al {formatDateLabel(data.summary.billingPeriodEnd)}.
-                  </p>
-                ) : null}
-              </div>
+              <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">
+                Metricas operativas
+              </h1>
             </div>
 
-            <button
-              type="button"
-              onClick={() => void refresh()}
-              className="rounded-2xl bg-neutral-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-neutral-700"
-            >
-              Actualizar metricas
-            </button>
+            <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(180px,1fr))_auto_auto]">
+              <label className="grid gap-2 text-sm text-neutral-700">
+                <span className="font-medium">Fecha desde</span>
+                <input
+                  type="date"
+                  value={appliedDateRange.startDate ? formatDateInputValue(appliedDateRange.startDate) : ''}
+                  onChange={(event) =>
+                    setDateRange((currentRange) => ({
+                      ...currentRange,
+                      startDate: event.target.value,
+                    }))}
+                  className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 shadow-sm outline-none transition focus:border-neutral-400"
+                />
+              </label>
+
+              <label className="grid gap-2 text-sm text-neutral-700">
+                <span className="font-medium">Fecha hasta</span>
+                <input
+                  type="date"
+                  value={appliedDateRange.endDate ? formatDateInputValue(appliedDateRange.endDate) : ''}
+                  onChange={(event) =>
+                    setDateRange((currentRange) => ({
+                      ...currentRange,
+                      endDate: event.target.value,
+                    }))}
+                  className="rounded-2xl border border-neutral-200 bg-white px-4 py-3 text-neutral-900 shadow-sm outline-none transition focus:border-neutral-400"
+                />
+              </label>
+
+              <button
+                type="button"
+                onClick={() => void refresh()}
+                disabled={loading}
+                className="rounded-2xl bg-neutral-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-neutral-700 disabled:cursor-not-allowed disabled:bg-neutral-400 md:self-end"
+              >
+                Aplicar rango
+              </button>
+
+              <button
+                type="button"
+                onClick={() => void refresh({ startDate: '', endDate: '' })}
+                disabled={loading}
+                className="rounded-2xl border border-black/10 bg-white px-5 py-3 text-sm font-medium text-neutral-700 transition hover:bg-stone-100 disabled:cursor-not-allowed disabled:text-neutral-400 md:self-end"
+              >
+                Usar default
+              </button>
+            </div>
           </div>
 
           {error ? (
@@ -412,34 +924,6 @@ export default function MetricsSection() {
             </div>
           ) : null}
         </section>
-
-        {data ? (
-          <div className="grid gap-6 xl:grid-cols-2">
-            <section className="rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.18)]">
-              <div className="mb-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
-                  Ingresos por estado
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-neutral-950">
-                  Facturacion proyectada por etapa
-                </h2>
-              </div>
-              <RevenueBarChart items={data.byState} />
-            </section>
-
-            <section className="rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.18)]">
-              <div className="mb-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
-                  Volumen actual
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-neutral-950">
-                  Distribucion de ordenes por estado
-                </h2>
-              </div>
-              <OrderDistributionChart items={data.byState} />
-            </section>
-          </div>
-        ) : null}
 
         {data ? (
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.7fr)]">
@@ -502,6 +986,13 @@ export default function MetricsSection() {
         ) : null}
 
         {data ? (
+          <StateCycleTimeCard
+            report={data.stateCycleTimes}
+            appliedDateRange={appliedDateRange}
+          />
+        ) : null}
+
+        {data ? (
           <div className="grid gap-6 xl:grid-cols-2">
             <MissingMetricCard
               title="Ganancias vs costos"
@@ -509,13 +1000,6 @@ export default function MetricsSection() {
               reason={data.missingMetrics.profitVsCost.reason}
               shape={data.missingMetrics.profitVsCost.shape}
               whyItHelps={data.missingMetrics.profitVsCost.whyItHelps}
-            />
-            <MissingMetricCard
-              title="Tiempos promedio por estado"
-              endpoint={data.missingMetrics.stateCycleTimes.endpoint}
-              reason={data.missingMetrics.stateCycleTimes.reason}
-              shape={data.missingMetrics.stateCycleTimes.shape}
-              whyItHelps={data.missingMetrics.stateCycleTimes.whyItHelps}
             />
           </div>
         ) : null}

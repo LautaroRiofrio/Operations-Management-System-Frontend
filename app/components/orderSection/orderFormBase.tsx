@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import ConfirmationDialog from '@/app/components/confirmationDialog';
 import ClientSelectorModal from '@/app/components/orderSection/clientSelectorModal';
 import CreateClientModal from '@/app/components/orderSection/createClientModal';
 import Products from '@/app/components/orderSection/products';
+import { useConfirmationDialog } from '@/app/hooks/useConfirmationDialog';
 import { useOrderCatalog } from '@/app/hooks/useOrderCatalog';
 import { useOrderDetails } from '@/app/hooks/useOrderDetails';
 import { useOrderForm } from '@/app/hooks/useOrderForm';
@@ -79,6 +81,7 @@ function mapOrderDetailToFormValues(order: OrderDetail): OrderFormValues {
 
 export default function OrderFormBase({
   defaultStateId,
+  onUnsavedChangesChange,
   selectedOrderId,
   setMode,
   variant,
@@ -88,6 +91,13 @@ export default function OrderFormBase({
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | 'all'>('all');
   const resolvedOrderId = selectedOrderId ?? null;
   const isEditing = variant === 'edit';
+  const {
+    askForConfirmation,
+    closeConfirmation,
+    confirm,
+    confirmation,
+    isConfirming,
+  } = useConfirmationDialog();
 
   const orderDetails = useOrderDetails(isEditing ? resolvedOrderId : null);
   const catalog = useOrderCatalog();
@@ -102,6 +112,7 @@ export default function OrderFormBase({
 
   const {
     addProduct,
+    hasUnsavedChanges,
     removeLine,
     setCustomer,
     setEstimatedDelivery,
@@ -121,6 +132,10 @@ export default function OrderFormBase({
     variant,
   });
 
+  useEffect(() => {
+    onUnsavedChangesChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onUnsavedChangesChange]);
+
   const catalogLoading = catalog.productsLoading;
   const catalogError = catalog.productsError;
 
@@ -129,10 +144,42 @@ export default function OrderFormBase({
   };
 
   const handleSubmit = async () => {
-    const wasSuccessful = await submit();
-    if (wasSuccessful) {
+    askForConfirmation({
+      confirmLabel: isEditing ? 'Guardar cambios' : 'Crear orden',
+      message: isEditing
+        ? 'Quieres guardar los cambios realizados en esta orden?'
+        : 'Quieres crear esta orden con los datos cargados?',
+      onConfirm: async () => {
+        const wasSuccessful = await submit();
+        if (wasSuccessful) {
+          onUnsavedChangesChange?.(false);
+          setMode('default');
+        }
+      },
+      title: isEditing ? 'Confirmar edicion' : 'Confirmar creacion',
+    });
+  };
+
+  const handleCancel = () => {
+    if (!hasUnsavedChanges) {
+      onUnsavedChangesChange?.(false);
       setMode('default');
+      return;
     }
+
+    askForConfirmation({
+      cancelLabel: isEditing ? 'Continuar editando' : 'Continuar creando',
+      confirmLabel: 'Descartar cambios',
+      message: isEditing
+        ? 'Hay cambios sin guardar. Quieres seguir editando esta orden o descartar los cambios?'
+        : 'Hay cambios sin guardar. Quieres seguir creando esta orden o descartar los cambios?',
+      onConfirm: () => {
+        onUnsavedChangesChange?.(false);
+        setMode('default');
+      },
+      title: 'Descartar cambios',
+      tone: 'danger',
+    });
   };
 
   if (isEditing && resolvedOrderId === null) {
@@ -179,7 +226,7 @@ export default function OrderFormBase({
               </h2>
             </div>
 
-            <button type="button" onClick={() => setMode('default')} className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50" >
+            <button type="button" onClick={handleCancel} className="rounded-full border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50" >
               Cancelar
             </button>
           </div>
@@ -370,6 +417,17 @@ export default function OrderFormBase({
           setCustomer(customer);
           setIsCreateClientModalOpen(false);
         }}
+      />
+      <ConfirmationDialog
+        cancelLabel={confirmation?.cancelLabel}
+        confirmLabel={confirmation?.confirmLabel}
+        isConfirming={isConfirming}
+        isOpen={confirmation !== null}
+        message={confirmation?.message ?? ''}
+        onCancel={closeConfirmation}
+        onConfirm={() => void confirm()}
+        title={confirmation?.title}
+        tone={confirmation?.tone}
       />
     </>
   );

@@ -26,6 +26,7 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
     isConfirming,
   } = useConfirmationDialog();
   const stateIds = resolveProductionStateIds(statesResource.items);
+  const canEditOrder = !!order && !!stateIds.pending && order.state === stateIds.pending;
   const actionButtonClass =
     'rounded-2xl px-5 py-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50';
 
@@ -223,17 +224,19 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
           <div className="flex min-h-0 flex-col gap-6 overflow-y-auto pr-1">
             {detailContent}
 
-            <div className="grid gap-3 md:grid-cols-3">
-              <button
-                type="button"
-                className={`${actionButtonClass} border border-black/10 bg-white text-neutral-900 hover:bg-stone-100`}
-                disabled={!order || isCancelling}
-                onClick={() => {
-                  setMode('editar');
-                }}
-              >
-                Editar pedido
-              </button>
+            <div className={`grid gap-3 ${canEditOrder ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+              {canEditOrder ? (
+                <button
+                  type="button"
+                  className={`${actionButtonClass} border border-black/10 bg-white text-neutral-900 hover:bg-stone-100`}
+                  disabled={isCancelling}
+                  onClick={() => {
+                    setMode('editar');
+                  }}
+                >
+                  Editar pedido
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={!order || isCancelling || statesResource.loading}

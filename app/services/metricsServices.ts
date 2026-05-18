@@ -41,6 +41,36 @@ export type MetricsCustomerRow = {
   revenue: number;
 };
 
+export type MetricsStateCycleTime = {
+  averageFormatted: string;
+  averageMinutes: number;
+  recordCount: number;
+  stateId: number;
+  stateName: string;
+};
+
+export type MetricsStateDetail = {
+  end: string | null;
+  orderId: number;
+  start: string | null;
+  timeFormatted: string;
+  timeMinutes: number;
+};
+
+export type MetricsCycleTimeInsight = {
+  detail: string;
+  title: string;
+};
+
+export type MetricsStateCycleTimeReport = {
+  averages: MetricsStateCycleTime[];
+  insights: MetricsCycleTimeInsight[];
+  isDefaultRange: boolean;
+  orderCount: number;
+  rangeEnd: string | null;
+  rangeStart: string | null;
+};
+
 export type MissingMetricsSpec = {
   reason: string;
   endpoint: string;
@@ -53,9 +83,9 @@ export type MetricsDashboardData = {
   deliveryBuckets: MetricsDeliveryBucket[];
   missingMetrics: {
     profitVsCost: MissingMetricsSpec;
-    stateCycleTimes: MissingMetricsSpec;
   };
   readyOrders: OrderListItem[];
+  stateCycleTimes: MetricsStateCycleTimeReport;
   summary: MetricsSummary;
   topCustomers: MetricsCustomerRow[];
 };
@@ -75,6 +105,33 @@ type DeliveryTimeConcentrationResponse = {
   }>;
   total_ordenes_no_finales?: number;
 };
+
+type AverageTimeByStateParams = {
+  endDate?: string;
+  startDate?: string;
+};
+
+type AverageTimeByStateResponse = {
+  cantidad_ordenes?: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  promedios_por_estado?: Array<{
+    cantidad_registros?: number;
+    estado?: string;
+    id_estado?: number;
+    promedio_formateado?: string;
+    promedio_minutos?: number | string;
+  }>;
+  rango_por_defecto?: boolean;
+};
+
+type StateDetailsResponse = Array<{
+  fin?: string;
+  inicio?: string;
+  orden_id?: number;
+  tiempo?: number | string;
+  tiempo_formateado?: string;
+}>;
 
 const TOTAL_KEYS = ['total', 'totalAmount', 'amount', 'importe', 'subtotal'];
 function isRecord(value: unknown): value is UnknownRecord {
@@ -168,16 +225,74 @@ function buildByState(snapshots: MetricsStateSnapshot[]) {
   }));
 }
 
-async function getTotalBilling() {
-  const { data } = await api.get<TotalBillingResponse>('/metrics/total-billing');
+function buildMetricsQueryParams(params?: AverageTimeByStateParams) {
+  const queryParams: Record<string, string> = {};
+
+  if (params?.startDate?.trim()) {
+    queryParams.startDate = params.startDate;
+  }
+
+  if (params?.endDate?.trim()) {
+    queryParams.endDate = params.endDate;
+  }
+
+  return queryParams;
+}
+
+async function getTotalBilling(params?: AverageTimeByStateParams) {
+  const { data } = await api.get<TotalBillingResponse>('/metrics/total-billing', {
+    params: buildMetricsQueryParams(params),
+  });
   return data;
 }
 
-async function getDeliveryTimeConcentration() {
+async function getDeliveryTimeConcentration(params?: AverageTimeByStateParams) {
   const { data } = await api.get<DeliveryTimeConcentrationResponse>(
     '/metrics/delivery-time-concentration',
+    {
+      params: buildMetricsQueryParams(params),
+    },
   );
   return data;
+}
+
+async function getAverageTimeByState(params?: AverageTimeByStateParams) {
+  const { data } = await api.get<AverageTimeByStateResponse>('/metrics/average-time-by-state', {
+    params: buildMetricsQueryParams(params),
+  });
+  return data;
+}
+
+export async function getMetricsStateDetails(
+  stateId: number,
+  params?: AverageTimeByStateParams,
+): Promise<MetricsStateDetail[]> {
+  const { data } = await api.get<StateDetailsResponse>(`/metrics/state-details/${stateId}`, {
+    params: buildMetricsQueryParams(params),
+  });
+
+  return (Array.isArray(data) ? data : [])
+    .map((detail) => {
+      const orderId = toNumber(detail.orden_id);
+      const timeMinutes = toNumber(detail.tiempo);
+
+      if (orderId === null || timeMinutes === null) {
+        return null;
+      }
+
+      return {
+        end: typeof detail.fin === 'string' && detail.fin.trim() ? detail.fin : null,
+        orderId,
+        start: typeof detail.inicio === 'string' && detail.inicio.trim() ? detail.inicio : null,
+        timeFormatted:
+          typeof detail.tiempo_formateado === 'string' && detail.tiempo_formateado.trim()
+            ? detail.tiempo_formateado
+            : '00:00:00',
+        timeMinutes,
+      };
+    })
+    .filter((detail): detail is MetricsStateDetail => detail !== null)
+    .sort((leftDetail, rightDetail) => rightDetail.timeMinutes - leftDetail.timeMinutes);
 }
 
 function buildSummary(
@@ -264,12 +379,126 @@ function buildTopCustomers(snapshots: MetricsStateSnapshot[]) {
     .slice(0, 5);
 }
 
-export async function getMetricsDashboardData(): Promise<MetricsDashboardData> {
+function buildStateCycleTimeInsights(averages: MetricsStateCycleTime[], orderCount: number) {
+  if (orderCount === 0 || averages.length === 0) {
+    return [
+      {
+        title: 'Sin muestra util',
+        detail:
+          'No hay ordenes entregadas dentro del periodo consultado, asi que no se puede detectar un cuello de botella todavia.',
+      },
+    ];
+  }
+
+  const totalAverageMinutes = averages.reduce(
+    (accumulator, currentState) => accumulator + currentState.averageMinutes,
+    0,
+  );
+  const sortedByAverage = [...averages].sort(
+    (leftState, rightState) => rightState.averageMinutes - leftState.averageMinutes,
+  );
+  const slowestState = sortedByAverage[0];
+  const fastestState = sortedByAverage.at(-1);
+  const secondSlowestState = sortedByAverage[1];
+  const bottleneckShare = totalAverageMinutes > 0
+    ? (slowestState.averageMinutes / totalAverageMinutes) * 100
+    : 0;
+  const combinedTopTwoShare =
+    totalAverageMinutes > 0
+      ? ((slowestState.averageMinutes + (secondSlowestState?.averageMinutes ?? 0)) /
+          totalAverageMinutes) *
+        100
+      : 0;
+
+  const insights: MetricsCycleTimeInsight[] = [
+    {
+      title: `Cuello principal: ${slowestState.stateName}`,
+      detail: `${slowestState.stateName} concentra ${slowestState.averageFormatted} por orden en promedio (${slowestState.averageMinutes.toFixed(1)} min), equivalente al ${Math.round(bottleneckShare)}% del tiempo operativo relevado.`,
+    },
+  ];
+
+  if (secondSlowestState) {
+    insights.push({
+      title: 'Foco de mejora',
+      detail: `${slowestState.stateName} y ${secondSlowestState.stateName} suman ${Math.round(combinedTopTwoShare)}% del ciclo promedio. Si hay que priorizar mejoras, conviene empezar por esas dos etapas.`,
+    });
+  }
+
+  if (fastestState) {
+    insights.push({
+      title: `Etapa mas agil: ${fastestState.stateName}`,
+      detail: `${fastestState.stateName} promedia ${fastestState.averageFormatted} por orden. Puede servir como referencia para revisar por que otras etapas tardan mas.`,
+    });
+  }
+
+  const partialCoverageStates = averages.filter((state) => state.recordCount !== orderCount);
+  if (partialCoverageStates.length > 0) {
+    insights.push({
+      title: 'Cobertura desigual',
+      detail: `Hay estados con menos registros que las ${orderCount} ordenes entregadas del periodo. Conviene revisar transiciones omitidas o estados que no aplican a todas las ordenes.`,
+    });
+  }
+
+  return insights.slice(0, 3);
+}
+
+function buildStateCycleTimes(payload: AverageTimeByStateResponse): MetricsStateCycleTimeReport {
+  const averages = Array.isArray(payload.promedios_por_estado)
+    ? payload.promedios_por_estado
+        .map((stateAverage) => {
+          const stateId = toNumber(stateAverage.id_estado);
+          const averageMinutes = toNumber(stateAverage.promedio_minutos);
+
+          if (stateId === null || averageMinutes === null) {
+            return null;
+          }
+
+          return {
+            averageFormatted:
+              typeof stateAverage.promedio_formateado === 'string' &&
+              stateAverage.promedio_formateado.trim()
+                ? stateAverage.promedio_formateado
+                : '00:00:00',
+            averageMinutes,
+            recordCount: toNumber(stateAverage.cantidad_registros) ?? 0,
+            stateId,
+            stateName:
+              typeof stateAverage.estado === 'string' && stateAverage.estado.trim()
+                ? stateAverage.estado
+                : `Estado ${stateId}`,
+          };
+        })
+        .filter((stateAverage): stateAverage is MetricsStateCycleTime => stateAverage !== null)
+        .sort((leftState, rightState) => rightState.averageMinutes - leftState.averageMinutes)
+    : [];
+
+  const orderCount = toNumber(payload.cantidad_ordenes) ?? 0;
+
+  return {
+    averages,
+    insights: buildStateCycleTimeInsights(averages, orderCount),
+    isDefaultRange: Boolean(payload.rango_por_defecto),
+    orderCount,
+    rangeEnd:
+      typeof payload.fecha_hasta === 'string' && payload.fecha_hasta.trim()
+        ? payload.fecha_hasta
+        : null,
+    rangeStart:
+      typeof payload.fecha_desde === 'string' && payload.fecha_desde.trim()
+        ? payload.fecha_desde
+        : null,
+  };
+}
+
+export async function getMetricsDashboardData(
+  params?: AverageTimeByStateParams,
+): Promise<MetricsDashboardData> {
   const states = await listStates();
-  const [snapshots, totalBilling, deliveryTimeConcentration] = await Promise.all([
+  const [snapshots, totalBilling, deliveryTimeConcentration, averageTimeByState] = await Promise.all([
     listStatesWithOrders(states),
-    getTotalBilling(),
-    getDeliveryTimeConcentration(),
+    getTotalBilling(params),
+    getDeliveryTimeConcentration(params),
+    getAverageTimeByState(params),
   ]);
   const byState = buildByState(snapshots);
   const readyOrders =
@@ -285,14 +514,9 @@ export async function getMetricsDashboardData(): Promise<MetricsDashboardData> {
         shape: '{ revenue, cost, profit, margins: [{ label, revenue, cost, profit }] }',
         whyItHelps: 'Evita reconstruir costos desde multiples recursos y permite graficar margen real con una sola llamada.',
       },
-      stateCycleTimes: {
-        reason: 'No hay historial temporal por estado ni timestamps de inicio/fin para medir cuanto dura cada tramo operativo.',
-        endpoint: 'GET /metrics/state-cycle-times?from=YYYY-MM-DD&to=YYYY-MM-DD',
-        shape: '{ averages: [{ stateId, stateName, avgMinutes, samples }], p95: [{ stateId, minutes }] }',
-        whyItHelps: 'Centraliza el calculo en backend y evita pedir orden por orden mas su historial para obtener promedios confiables.',
-      },
     },
     readyOrders,
+    stateCycleTimes: buildStateCycleTimes(averageTimeByState),
     summary: buildSummary(snapshots, totalBilling),
     topCustomers: buildTopCustomers(snapshots),
   };
