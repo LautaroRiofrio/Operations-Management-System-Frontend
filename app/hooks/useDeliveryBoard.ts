@@ -6,9 +6,11 @@ import { useOrderDetails } from '@/app/hooks/useOrderDetails';
 import { useOrdersByState } from '@/app/hooks/useOrdersByState';
 import { listStates } from '@/app/services/adminServices';
 import {
+  getOrderDetailForProduction,
   resolveProductionStateIds,
   transitionOrderToState,
 } from '@/app/services/productionServices';
+import { syncDeliveryStockMovement } from '@/app/services/orderStockMovementServices';
 import type { OrderListItem } from '@/types';
 
 type DeliveryBanner = {
@@ -64,6 +66,7 @@ export function useDeliveryBoard() {
     orderItem: OrderListItem,
     nextStateId: number | null,
     action: Exclude<DeliveryAction, null>,
+    stockStatus: 'entregado' | 'cancelado_con_perdida',
     successText: string,
     errorText: string,
   ) => {
@@ -79,15 +82,20 @@ export function useDeliveryBoard() {
     setActiveAction(action);
 
     try {
+      const orderDetail = await getOrderDetailForProduction(orderItem.id);
+      await syncDeliveryStockMovement(orderDetail, stockStatus);
       await transitionOrderToState(orderItem.id, nextStateId);
       setBanner({
         tone: 'success',
         text: successText,
       });
-    } catch {
+    } catch (error) {
+      const resolvedErrorText =
+        error instanceof Error && error.message.trim() ? error.message : errorText;
+
       setBanner({
         tone: 'error',
-        text: errorText,
+        text: resolvedErrorText,
       });
     } finally {
       setActiveOrderId(null);
@@ -100,6 +108,7 @@ export function useDeliveryBoard() {
       orderItem,
       stateIds.delivered,
       'deliver',
+      'entregado',
       `El pedido ${orderItem.orderNumber} fue marcado como entregado.`,
       `No se pudo entregar ${orderItem.orderNumber}.`,
     );
@@ -109,6 +118,7 @@ export function useDeliveryBoard() {
       orderItem,
       stateIds.cancelled,
       'cancel',
+      'cancelado_con_perdida',
       `El pedido ${orderItem.orderNumber} fue cancelado.`,
       `No se pudo cancelar ${orderItem.orderNumber}.`,
     );

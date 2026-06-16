@@ -107,4 +107,63 @@ export type StockMovementTypeInput = {
   nombre: string;
 };
 
+export type StockMovementTypeListQuery = {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+};
+
+export type StockMovementRelatedEntity = Record<string, unknown>;
+
+export type StockMovementDetail = {
+  id: number;
+  id_movimiento: number;
+  id_ingrediente: number | null;
+  id_producto: number | null;
+  cantidad: number;
+  subtotal: number;
+  precio_unitario: number;
+  ingrediente?: StockMovementRelatedEntity | null;
+  producto?: StockMovementRelatedEntity | null;
+};
+
+export type StockMovement = {
+  id: number;
+  id_tipo_movimiento: number;
+  id_order?: number | null;
+  fecha: string;
+  tipo_movimiento: StockMovementType;
+  detalles: StockMovementDetail[];
+};
+
+export type StockMovementDetailInput = {
+  id_ingrediente?: number | null;
+  id_producto?: number | null;
+  cantidad: number;
+  subtotal: number;
+  precio_unitario: number;
+};
+
+export type StockMovementCreateInput = {
+  id_tipo_movimiento: number;
+  id_order?: number | null;
+  fecha?: string;
+  detalles: StockMovementDetailInput[];
+};
+
+export type StockMovementUpdateInput = {
+  id_tipo_movimiento?: number;
+  id_order?: number | null;
+  fecha?: string;
+  detalles?: StockMovementDetailInput[];
+};
+
+export type StockMovementListQuery = {
+  page?: number;
+  pageSize?: number;
+  typeId?: number;
+  ingredientId?: number;
+  productId?: number;
+};
+
 export type CrudFormValues = Record<string, string>;

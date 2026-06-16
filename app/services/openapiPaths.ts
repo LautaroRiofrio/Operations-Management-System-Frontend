@@ -23,4 +23,8 @@ export const administrativePaths = {
     collection: '/stockMovementType',
     detail: (id: number) => `/stockMovementType/${id}`,
   },
+  stockMovements: {
+    collection: '/stockMovement',
+    detail: (id: number) => `/stockMovement/${id}`,
+  },
 } as const;

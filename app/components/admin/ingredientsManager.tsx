@@ -11,11 +11,24 @@ import {
 } from '@/app/services/adminServices';
 import type { CrudFormValues, Ingredient } from '@/types';
 
+const DEFAULT_UNIT_OPTIONS = ['g', 'kg', 'ml', 'l', 'unidad'];
+
 export default function IngredientsManager() {
   const { error, items, loading, refresh } = useCrudResource(
     listIngredients,
     'No se pudieron cargar los ingredientes.',
   );
+  const unitOptions = Array.from(
+    new Set([
+      ...DEFAULT_UNIT_OPTIONS,
+      ...items
+        .map((item) => item.unidad_medida.trim())
+        .filter((unit) => unit.length > 0),
+    ]),
+  ).map((unit) => ({
+    label: unit,
+    value: unit,
+  }));
 
   const handleCreate = async (values: CrudFormValues) => {
     try {
@@ -59,12 +72,19 @@ export default function IngredientsManager() {
       items={items}
       emptyMessage="Todavia no hay ingredientes registrados."
       fields={[
-        { label: 'Nombre', name: 'nombre', placeholder: 'Ej. Harina', required: true },
+        {
+          label: 'Nombre',
+          name: 'nombre',
+          placeholder: 'Nombre del ingrediente',
+          required: true,
+        },
         {
           label: 'Unidad de medida',
           name: 'unidad_medida',
-          placeholder: 'Ej. kg, l, unidad',
+          emptyOptionLabel: 'Seleccionar unidad',
           required: true,
+          type: 'select',
+          options: unitOptions,
         },
       ]}
       columns={[

@@ -70,6 +70,7 @@ function formatRecipeSummary(recipe: Recipe | undefined): string {
 }
 
 export default function ProductsManager() {
+  const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
   const productsResource = useCrudResource(listProducts, 'No se pudieron cargar los productos.');
   const categoriesResource = useCrudResource(
     listCategories,
@@ -260,7 +261,7 @@ export default function ProductsManager() {
   return (
     <>
       <section className="min-h-0 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
-        <div className="flex items-center justify-between gap-4 border-b border-black/10 px-5 py-4">
+        <div className="flex flex-col items-start justify-between gap-4 border-b border-black/10 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
           <div>
             <p className="text-sm text-neutral-500">ABM conectado a la API</p>
             <h2 className="text-2xl font-semibold text-neutral-900">Listado</h2>
@@ -285,60 +286,125 @@ export default function ProductsManager() {
           ) : null}
 
           {!loading && !error && productsResource.items.length > 0 ? (
-            <table className="min-w-full divide-y divide-black/10 text-left text-sm">
-              <thead className="bg-neutral-50 text-neutral-500">
-                <tr>
-                  <th className="px-5 py-3 font-medium">ID</th>
-                  <th className="px-5 py-3 font-medium">Nombre</th>
-                  <th className="px-5 py-3 font-medium">Categoria</th>
-                  <th className="px-5 py-3 font-medium">Precio</th>
-                  <th className="px-5 py-3 font-medium">Receta</th>
-                  <th className="px-5 py-3 font-medium">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/10">
+            <>
+              <div className="grid gap-3 p-4 lg:hidden">
                 {productsResource.items.map((product) => (
-                  <tr key={product.id} className="align-top">
-                    <td className="px-5 py-4">{product.id}</td>
-                    <td className="px-5 py-4">{product.nombre}</td>
-                    <td className="px-5 py-4">
-                      {product.categoria?.nombre ?? `#${product.id_categoria}`}
-                    </td>
-                    <td className="px-5 py-4">
-                      {typeof product.precio === 'number' ? `$${product.precio.toFixed(2)}` : '-'}
-                    </td>
-                    <td className="max-w-xs whitespace-pre-wrap px-5 py-4 text-neutral-600">
-                      {formatRecipeSummary(recipeByProductId.get(product.id))}
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleEdit(product)}
-                          className="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-300"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          disabled={deletingId === product.id}
-                          onClick={() => void handleDelete(product)}
-                          className="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
-                        >
-                          {deletingId === product.id ? 'Eliminando...' : 'Eliminar'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <article key={product.id} className="rounded-2xl border border-black/10 bg-stone-50 p-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpandedProductId((currentValue) =>
+                          currentValue === product.id ? null : product.id,
+                        )}
+                      className="flex w-full items-center justify-between gap-3 text-left"
+                    >
+                      <h3 className="text-base font-semibold text-neutral-900">{product.nombre}</h3>
+                      <span className="text-xl leading-none text-neutral-500">
+                        {expandedProductId === product.id ? '−' : '+'}
+                      </span>
+                    </button>
+
+                    {expandedProductId === product.id ? (
+                      <>
+                        <div className="mt-4 grid gap-3">
+                          <div className="grid gap-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">ID</p>
+                            <p className="text-sm text-neutral-900">{product.id}</p>
+                          </div>
+                          <div className="grid gap-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">Categoria</p>
+                            <p className="text-sm text-neutral-900">{product.categoria?.nombre ?? `#${product.id_categoria}`}</p>
+                          </div>
+                          <div className="grid gap-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">Precio</p>
+                            <p className="text-sm text-neutral-900">
+                              {typeof product.precio === 'number' ? `$${product.precio.toFixed(2)}` : '-'}
+                            </p>
+                          </div>
+                          <div className="grid gap-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">Receta</p>
+                            <p className="text-sm text-neutral-600">{formatRecipeSummary(recipeByProductId.get(product.id))}</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(product)}
+                            className="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-300"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deletingId === product.id}
+                            onClick={() => void handleDelete(product)}
+                            className="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                          >
+                            {deletingId === product.id ? 'Eliminando...' : 'Eliminar'}
+                          </button>
+                        </div>
+                      </>
+                    ) : null}
+                  </article>
                 ))}
-              </tbody>
-            </table>
+              </div>
+
+              <table className="hidden w-full min-w-[880px] divide-y divide-black/10 text-left text-sm lg:table">
+                <thead className="bg-neutral-50 text-neutral-500">
+                  <tr>
+                    <th className="px-5 py-3 font-medium">ID</th>
+                    <th className="px-5 py-3 font-medium">Nombre</th>
+                    <th className="px-5 py-3 font-medium">Categoria</th>
+                    <th className="px-5 py-3 font-medium">Precio</th>
+                    <th className="px-5 py-3 font-medium">Receta</th>
+                    <th className="px-5 py-3 font-medium">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black/10">
+                  {productsResource.items.map((product) => (
+                    <tr key={product.id} className="align-top">
+                      <td className="px-5 py-4">{product.id}</td>
+                      <td className="px-5 py-4">{product.nombre}</td>
+                      <td className="px-5 py-4">
+                        {product.categoria?.nombre ?? `#${product.id_categoria}`}
+                      </td>
+                      <td className="px-5 py-4">
+                        {typeof product.precio === 'number' ? `$${product.precio.toFixed(2)}` : '-'}
+                      </td>
+                      <td className="max-w-xs whitespace-pre-wrap px-5 py-4 text-neutral-600">
+                        {formatRecipeSummary(recipeByProductId.get(product.id))}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEdit(product)}
+                            className="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-300"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deletingId === product.id}
+                            onClick={() => void handleDelete(product)}
+                            className="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                          >
+                            {deletingId === product.id ? 'Eliminando...' : 'Eliminar'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           ) : null}
         </div>
       </section>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 sm:p-6">
           <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
             <div className="border-b border-black/10 px-6 py-5">
               <p className="text-sm text-neutral-500">ABM conectado a la API</p>
@@ -353,7 +419,7 @@ export default function ProductsManager() {
                 <input
                   required
                   type="text"
-                  placeholder="Ej. Torta de vainilla"
+                  placeholder="Nombre del producto"
                   className="rounded-xl border border-black/10 bg-white px-4 py-3 outline-none transition focus:border-black"
                   value={formValues.nombre}
                   onChange={(event) =>
@@ -393,7 +459,7 @@ export default function ProductsManager() {
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="Ej. 12000"
+                    placeholder="Precio del producto"
                     className="rounded-xl border border-black/10 bg-white px-4 py-3 outline-none transition focus:border-black"
                     value={formValues.precio}
                     onChange={(event) =>
@@ -407,7 +473,7 @@ export default function ProductsManager() {
               </div>
 
               <div className="rounded-2xl border border-black/10 bg-neutral-50 p-4">
-                <div className="mb-4 flex items-center justify-between gap-4">
+                <div className="mb-4 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
                   <div>
                     <h3 className="text-lg font-semibold text-neutral-900">Receta</h3>
                     <p className="text-sm text-neutral-500">
@@ -498,7 +564,7 @@ export default function ProductsManager() {
                 <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{submitError}</div>
               ) : null}
 
-              <div className="mt-2 flex gap-3 border-t border-black/10 pt-4">
+              <div className="mt-2 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row">
                 <button
                   type="submit"
                   disabled={isSubmitting}

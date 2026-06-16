@@ -5,11 +5,11 @@ import { Providers } from './providers';
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="h-dvh overflow-hidden">
+      <body className="min-h-dvh overflow-x-hidden">
         <Providers>
-          <div className="flex h-screen flex-col overflow-hidden">
+          <div className="flex min-h-dvh flex-col bg-white lg:h-dvh lg:overflow-hidden">
             <Menu />
-            <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+            <div className="min-h-0 flex-1 lg:overflow-hidden">{children}</div>
           </div>
         </Providers>
       </body>

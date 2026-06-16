@@ -111,21 +111,9 @@ export default function ReceptionSection() {
   };
 
   return (
-    <div className="grid h-full w-full min-h-0 grid-cols-[40%_60%] ">
-      <section className="min-h-0 h-full overflow-hidden border-r border-black/10 bg-white">
-        <div className="flex h-full min-h-0 flex-col gap-5 p-5">
-          <div className="rounded-xl border border-black/10 bg-neutral-100 px-4 py-3 transition-colors focus-within:border-black/20 focus-within:bg-white">
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-neutral-400">Buscar</span>
-              <input
-                className="w-full bg-transparent text-sm text-neutral-800 outline-none placeholder:text-neutral-400"
-                placeholder="Buscar por cliente o numero de orden..."
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </div>
-          </div>
-
+    <div className="grid min-h-full w-full min-w-0 lg:h-full lg:min-h-0 lg:grid-cols-[minmax(300px,40%)_minmax(0,60%)]">
+      <section className="min-h-0 border-b border-black/10 bg-white lg:h-full lg:overflow-hidden lg:border-b-0 lg:border-r">
+        <div className="flex min-h-0 flex-col gap-5 p-4 sm:p-5 lg:h-full">
           <div className="rounded-xl bg-neutral-100 p-2">
             {statesResource.loading && states.length === 0 ? (
               <div className="text-sm text-neutral-600">Cargando estados...</div>
@@ -137,12 +125,12 @@ export default function ReceptionSection() {
 
             {!statesResource.loading && !statesResource.error
               ? (
-                <div className="grid grid-cols-[repeat(auto-fit,minmax(120px,1fr))] gap-2">
+                <div className="-mx-2 hide-scrollbar flex snap-x snap-mandatory gap-2 overflow-x-auto overscroll-x-contain px-2 pb-1 lg:mx-0 lg:grid lg:grid-cols-[repeat(auto-fit,minmax(120px,1fr))] lg:overflow-visible lg:px-0 lg:pb-0">
                   {states.map((state) => (
                     <button
                       key={state.id}
                       type="button"
-                      className={`rounded-lg px-4 py-2 text-center text-sm transition-colors ${
+                      className={`min-w-full snap-center snap-always rounded-lg px-4 py-3 text-center text-sm transition-colors lg:min-w-0 ${
                         resolvedSelectedState === state.id
                           ? 'bg-regal-gris-hover text-white'
                           : 'bg-white text-neutral-700 hover:bg-regal-gris hover:text-black'
@@ -163,7 +151,19 @@ export default function ReceptionSection() {
               : null}
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto pr-2">
+          <div className="rounded-xl border border-black/10 bg-neutral-100 px-4 py-3 transition-colors focus-within:border-black/20 focus-within:bg-white">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-neutral-400">Buscar</span>
+              <input
+                className="w-full bg-transparent text-sm text-neutral-800 outline-none placeholder:text-neutral-400"
+                placeholder="Buscar por cliente o numero de orden..."
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto lg:pr-2">
             {loading ? (
               <div className="rounded-xl bg-neutral-100 p-4 text-sm text-neutral-600">
                 Cargando ordenes...
@@ -189,7 +189,7 @@ export default function ReceptionSection() {
             ) : null}
 
             {!loading && !error && visibleOrders.length > 0 ? (
-              <div className="grid grid-cols-2 gap-5 pb-20">
+              <div className="grid gap-4 pb-6 sm:grid-cols-2 lg:gap-5 lg:pb-20">
                 {visibleOrders.map((order) => (
                   <Order
                     key={order.id}

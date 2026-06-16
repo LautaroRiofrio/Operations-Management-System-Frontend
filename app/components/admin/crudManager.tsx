@@ -11,6 +11,7 @@ type SelectOption = {
 };
 
 type CrudField = {
+  emptyOptionLabel?: string;
   label: string;
   name: string;
   placeholder?: string;
@@ -155,7 +156,7 @@ export default function CrudManager<TItem>({
   return (
     <>
       <section className="min-h-0 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
-        <div className="flex items-center justify-between gap-4 border-b border-black/10 px-5 py-4">
+        <div className="flex flex-col items-start justify-between gap-4 border-b border-black/10 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
           <div>
             <p className="text-sm text-neutral-500">{subtitle}</p>
             <h2 className="text-2xl font-semibold text-neutral-900">Listado</h2>
@@ -182,58 +183,101 @@ export default function CrudManager<TItem>({
           ) : null}
 
           {!loading && !error && items.length > 0 ? (
-            <table className="min-w-full divide-y divide-black/10 text-left text-sm">
-              <thead className="bg-neutral-50 text-neutral-500">
-                <tr>
-                  {columns.map((column) => (
-                    <th key={column.header} className="px-5 py-3 font-medium">
-                      {column.header}
-                    </th>
-                  ))}
-                  <th className="px-5 py-3 font-medium">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/10">
+            <>
+              <div className="grid gap-3 p-4 lg:hidden">
                 {items.map((item) => {
                   const itemId = getItemId(item);
 
                   return (
-                    <tr key={itemId} className="align-top">
-                      {columns.map((column) => (
-                        <td key={`${itemId}-${column.header}`} className={`px-5 py-4 ${column.className ?? ''}`}>
-                          {column.render(item) ?? '-'}
-                        </td>
-                      ))}
-                      <td className="px-5 py-4">
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleEdit(item)}
-                            className="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-300"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            disabled={deletingId === itemId}
-                            onClick={() => void handleDelete(item)}
-                            className="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
-                          >
-                            {deletingId === itemId ? 'Eliminando...' : 'Eliminar'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <article key={itemId} className="rounded-2xl border border-black/10 bg-stone-50 p-4">
+                      <div className="grid gap-3">
+                        {columns.map((column) => (
+                          <div key={`${itemId}-${column.header}`} className="grid gap-1">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-neutral-500">
+                              {column.header}
+                            </p>
+                            <p className={`text-sm text-neutral-900 ${column.className ?? ''}`}>
+                              {column.render(item) ?? '-'}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(item)}
+                          className="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-300"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          disabled={deletingId === itemId}
+                          onClick={() => void handleDelete(item)}
+                          className="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                        >
+                          {deletingId === itemId ? 'Eliminando...' : 'Eliminar'}
+                        </button>
+                      </div>
+                    </article>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+
+              <table className="hidden w-full min-w-[720px] divide-y divide-black/10 text-left text-sm lg:table">
+                <thead className="bg-neutral-50 text-neutral-500">
+                  <tr>
+                    {columns.map((column) => (
+                      <th key={column.header} className="px-5 py-3 font-medium">
+                        {column.header}
+                      </th>
+                    ))}
+                    <th className="px-5 py-3 font-medium">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black/10">
+                  {items.map((item) => {
+                    const itemId = getItemId(item);
+
+                    return (
+                      <tr key={itemId} className="align-top">
+                        {columns.map((column) => (
+                          <td key={`${itemId}-${column.header}`} className={`px-5 py-4 ${column.className ?? ''}`}>
+                            {column.render(item) ?? '-'}
+                          </td>
+                        ))}
+                        <td className="px-5 py-4">
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleEdit(item)}
+                              className="rounded-lg bg-neutral-200 px-3 py-2 text-xs font-medium text-neutral-700 transition hover:bg-neutral-300"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              disabled={deletingId === itemId}
+                              onClick={() => void handleDelete(item)}
+                              className="rounded-lg bg-red-600 px-3 py-2 text-xs font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-300"
+                            >
+                              {deletingId === itemId ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
           ) : null}
         </div>
       </section>
 
       {isModalOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 sm:p-6">
           <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
             <div className="border-b border-black/10 px-6 py-5">
               <p className="text-sm text-neutral-500">{subtitle}</p>
@@ -258,7 +302,7 @@ export default function CrudManager<TItem>({
                         }))
                       }
                     >
-                      <option value="">Seleccionar...</option>
+                      <option value="">{field.emptyOptionLabel ?? 'Seleccionar...'}</option>
                       {field.options?.map((option) => (
                         <option key={option.value} value={option.value}>
                           {option.label}
@@ -302,7 +346,7 @@ export default function CrudManager<TItem>({
                 <div className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">{submitError}</div>
               ) : null}
 
-              <div className="mt-2 flex gap-3 border-t border-black/10 pt-4">
+              <div className="mt-2 flex flex-col gap-3 border-t border-black/10 pt-4 sm:flex-row">
                 <button
                   type="submit"
                   disabled={isSubmitting}

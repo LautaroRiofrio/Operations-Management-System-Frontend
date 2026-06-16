@@ -12,6 +12,7 @@ import {
   transitionOrderToState,
   type ProductionOrderCard,
 } from '@/app/services/productionServices';
+import { syncProductionStockMovement } from '@/app/services/orderStockMovementServices';
 import type { OrderListItem } from '@/types';
 
 type ProductionProgressState = Record<string, number>;
@@ -293,6 +294,8 @@ export function useProductionBoard() {
     setActiveAction('complete');
 
     try {
+      const orderDetail = await getOrderDetailForProduction(order.id);
+      await syncProductionStockMovement(orderDetail);
       await transitionOrderToState(order.id, stateIds.ready);
       detailsCacheRef.current.delete(order.id);
       setProductionOrders((currentOrders) =>
@@ -302,10 +305,15 @@ export function useProductionBoard() {
         tone: 'success',
         text: `El pedido ${order.orderNumber} quedo listo.`,
       });
-    } catch {
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error && error.message.trim()
+          ? error.message
+          : `No se pudo completar ${order.orderNumber}.`;
+
       setBanner({
         tone: 'error',
-        text: `No se pudo completar ${order.orderNumber}.`,
+        text: errorMessage,
       });
     } finally {
       setActiveOrderId(null);

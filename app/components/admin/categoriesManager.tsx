@@ -53,7 +53,12 @@ export default function CategoriesManager() {
       items={items}
       emptyMessage="Todavia no hay categorias registradas."
       fields={[
-        { label: 'Nombre', name: 'nombre', placeholder: 'Ej. Tortas', required: true },
+        {
+          label: 'Nombre',
+          name: 'nombre',
+          placeholder: 'Nombre de la categoria',
+          required: true,
+        },
       ]}
       columns={[
         { header: 'ID', render: (item) => item.id },

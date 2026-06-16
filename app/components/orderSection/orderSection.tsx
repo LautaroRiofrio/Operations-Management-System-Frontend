@@ -42,7 +42,7 @@ const OrderSection = ({
   };
 
   return (
-    <section className="flex h-full max-h-full min-h-0  bg-neutral-100">
+    <section className="flex min-h-0 bg-neutral-100 lg:h-full lg:max-h-full">
       {renderContent()}
     </section>
   );

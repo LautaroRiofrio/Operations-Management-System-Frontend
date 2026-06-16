@@ -31,7 +31,9 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
     'rounded-2xl px-5 py-4 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50';
 
   const handleCancelOrder = async () => {
-    if (!order || !stateIds.cancelled) {
+    const cancelledStateId = stateIds.cancelled;
+
+    if (!order || !cancelledStateId) {
       setCancelError('No se encontro el estado "cancelado".');
       return;
     }
@@ -44,7 +46,7 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
         setCancelError(null);
 
         try {
-          await transitionOrderToState(order.id, stateIds.cancelled);
+          await transitionOrderToState(order.id, cancelledStateId);
           setMode('default');
         } catch {
           setCancelError('No se pudo cancelar la orden.');
@@ -131,7 +133,7 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
                   </div>
                 </div>
 
-                <div className="min-w-[180px] rounded-2xl bg-white/10 px-4 py-3">
+                <div className="w-full rounded-2xl bg-white/10 px-4 py-3 sm:w-auto sm:min-w-[180px]">
                   <p className="text-xs uppercase tracking-wide text-stone-300">Total</p>
                   <p className="mt-2 text-2xl font-semibold">{order.totalLabel}</p>
                 </div>
@@ -219,12 +221,12 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
 
   return (
     <>
-      <div className="h-full overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_28%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_48%,_#fafaf9_100%)]">
-        <div className="grid h-full min-h-0 gap-6 p-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
-          <div className="flex min-h-0 flex-col gap-6 overflow-y-auto pr-1">
+      <div className="min-h-full bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.12),_transparent_28%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_48%,_#fafaf9_100%)] lg:h-full lg:overflow-hidden">
+        <div className="grid min-h-full gap-6 p-4 sm:p-6 lg:h-full lg:min-h-0 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
+          <div className="flex min-h-0 flex-col gap-6 lg:overflow-y-auto lg:pr-1">
             {detailContent}
 
-            <div className={`grid gap-3 ${canEditOrder ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+            <div className={`grid gap-3 ${canEditOrder ? 'md:grid-cols-3' : 'sm:grid-cols-2'}`}>
               {canEditOrder ? (
                 <button
                   type="button"
@@ -259,7 +261,7 @@ const ViewOrder = ({ selectedOrderId, setMode }: OrderSectionProps) => {
             </div>
           </div>
 
-          <div className="min-h-0 overflow-hidden">{productsContent}</div>
+          <div className="min-h-0 lg:overflow-hidden">{productsContent}</div>
         </div>
       </div>
 

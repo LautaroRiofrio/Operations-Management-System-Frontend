@@ -14,19 +14,19 @@ export default function AdministrativeSubmenu() {
   const isMetricsView = pathname.startsWith('/administrativo/metricas');
 
   return (
-    <div className="border-b border-black/10 bg-white px-5 py-4">
+    <div className="border-b border-black/10 bg-white px-4 py-4 sm:px-5">
       <div className="flex flex-wrap items-center justify-between gap-6">
         <div>
           <p className="text-sm font-medium uppercase tracking-[0.2em] text-neutral-500">
             Administrativo
           </p>
-          <h1 className="text-2xl font-semibold text-neutral-900">
+          <h1 className="text-xl font-semibold text-neutral-900 sm:text-2xl">
             {isMetricsView ? 'Metricas' : 'Gestion de catalogo'}
           </h1>
         </div>
 
         {!isMetricsView ? (
-          <nav className="flex gap-3">
+          <nav className="flex w-full flex-wrap gap-3 lg:w-auto">
             {ADMIN_ITEMS.map((item) => {
               const isActive = pathname === item.href;
 

@@ -34,7 +34,7 @@ const Products = ({
   });
 
   return (
-    <div className="flex flex-col gap-5 min-h-0 h-full overflow-hidden rounded-3xl bg-regal-gris px-5 py-5 ">
+    <div className="flex min-h-0 flex-col gap-5 rounded-3xl bg-regal-gris px-4 py-4 sm:px-5 sm:py-5 xl:h-full xl:overflow-hidden">
       {/* titulo */}
       <div>
         <h2 className="text-2xl font-bold text-white">Productos</h2>

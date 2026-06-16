@@ -216,12 +216,12 @@ export default function OrderFormBase({
 
   return (
     <>
-      <div className="flex flex-1 h-full max-h-full min-h-0  gap-5  p-5 ">
-        <div className="flex flex-1 min-h-0 flex-col gap-8">
+      <div className="flex flex-1 flex-col gap-5 p-4 sm:p-5 xl:h-full xl:max-h-full xl:min-h-0 xl:flex-row">
+        <div className="flex flex-1 min-h-0 flex-col gap-6 sm:gap-8">
           {/* titulo */}
-          <div className="flex items-start justify-between gap-4 ">
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
             <div>
-              <h2 className="text-3xl font-bold text-neutral-900">
+              <h2 className="text-2xl font-bold text-neutral-900 sm:text-3xl">
                 {isEditing ? 'Editar orden' : 'Nueva orden'}
               </h2>
             </div>
@@ -264,7 +264,7 @@ export default function OrderFormBase({
 
             <div className=''>
               <h3 className="mb-3 text-xl font-semibold text-neutral-900">Metodo de pago</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 {PAYMENT_METHODS.map((method) => (
                   <button key={method.value} type="button" onClick={() => setPaymentMethod(method.value)} className={`rounded-2xl px-4 py-3 text-sm font-medium transition ${values.paymentMethod === method.value ? 'bg-regal-gris-hover text-white' : 'bg-white text-neutral-700 shadow-sm hover:bg-neutral-100' }`} >
                     {method.label}
@@ -289,11 +289,11 @@ export default function OrderFormBase({
         </div>
 
         {/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */}
-        <div className="flex flex-col flex-1 min-h-0  rounded-3xl bg-white p-5 shadow-sm ">
-          <div className="flex h-full min-h-0 flex-col gap-5 ">
+        <div className="flex min-h-0 flex-1 flex-col rounded-3xl bg-white p-4 shadow-sm sm:p-5">
+          <div className="flex min-h-0 flex-col gap-5 xl:h-full">
             {/* Titulo */}
             <div className=''>
-              <h3 className="text-2xl font-bold text-neutral-900">Resumen</h3>
+              <h3 className="text-xl font-bold text-neutral-900 sm:text-2xl">Resumen</h3>
               <p className="text-sm text-neutral-500">
                 {isEditing
                   ? 'Cambios listos para guardar en la orden seleccionada.'
@@ -338,7 +338,7 @@ export default function OrderFormBase({
             </div>
 
             {/* Resumen productos */}
-            <div className="min-h-0 h-full overflow-y-auto pr-1">
+            <div className="min-h-0 overflow-y-auto xl:h-full xl:pr-1">
               {values.lines.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-neutral-200 px-4 py-6 text-sm text-neutral-500">
                   Todavía no agregaste productos.
@@ -360,7 +360,7 @@ export default function OrderFormBase({
                         </button>
                       </div>
 
-                      <div className="mt-4 flex items-center justify-between gap-4">
+                      <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-2">
                           <button type="button" onClick={() => updateLineQuantity(line.productId, line.quantity - 1)} className="h-9 w-9 rounded-full bg-neutral-100 text-lg text-neutral-700" >
                             -
@@ -383,8 +383,8 @@ export default function OrderFormBase({
               )}
             </div>
             {/* Total y boton "crear orden" */}
-            <div className="grid gap-4 border-t border-neutral-200 pt-4  ">
-              <div className="flex items-center justify-between text-lg">
+            <div className="grid gap-4 border-t border-neutral-200 pt-4">
+              <div className="flex items-center justify-between gap-4 text-lg">
                 <span className="font-medium text-neutral-600">Total</span>
                 <span className="text-2xl font-bold text-neutral-900">
                   {formatCurrency(totalAmount)}

@@ -261,7 +261,7 @@ function StateCycleTimeChart({
   }));
 
   return (
-    <div className="rounded-[24px] border border-black/10 bg-white p-4">
+    <div className="overflow-x-auto rounded-[24px] border border-black/10 bg-white p-4">
       <div className="h-[320px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -352,7 +352,7 @@ function StateDetailChart({
         </button>
       </div>
 
-      <div className="rounded-[24px] border border-black/10 bg-white p-4">
+      <div className="overflow-x-auto rounded-[24px] border border-black/10 bg-white p-4">
         <div className="h-[360px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 16, right: 12, bottom: 16, left: 0 }}>
@@ -439,7 +439,7 @@ function OrderDetailDrilldown({
               <h4 className="mt-4 text-3xl font-semibold tracking-tight">{order.customerName}</h4>
             </div>
 
-            <div className="min-w-[180px] rounded-2xl bg-white/10 px-4 py-3">
+            <div className="w-full rounded-2xl bg-white/10 px-4 py-3 sm:w-auto sm:min-w-[180px]">
               <p className="text-xs uppercase tracking-wide text-stone-300">Total</p>
               <p className="mt-2 text-2xl font-semibold">{order.totalLabel}</p>
             </div>
@@ -800,8 +800,8 @@ export default function MetricsSection() {
 
   if (loading && !data) {
     return (
-      <div className="h-full overflow-auto bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.10),_transparent_28%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_45%,_#fafaf9_100%)] p-6">
-        <div className="grid gap-6">
+      <div className="min-h-full bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.10),_transparent_28%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_45%,_#fafaf9_100%)] p-4 sm:p-6 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
+        <div className="grid gap-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
           <div className="h-36 animate-pulse rounded-[32px] bg-white" />
           <div className="grid gap-6 xl:grid-cols-2">
             <div className="h-96 animate-pulse rounded-[32px] bg-white" />
@@ -817,8 +817,8 @@ export default function MetricsSection() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.10),_transparent_28%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_45%,_#fafaf9_100%)] p-6">
-      <div className="grid gap-6">
+    <div className="min-h-full bg-[radial-gradient(circle_at_top_left,_rgba(245,158,11,0.10),_transparent_28%),linear-gradient(135deg,_#fafaf9_0%,_#f5f5f4_45%,_#fafaf9_100%)] p-4 sm:p-6 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
+      <div className="grid gap-6 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         <section className="rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.22)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
@@ -830,7 +830,7 @@ export default function MetricsSection() {
               </h1>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-[repeat(2,minmax(180px,1fr))_auto_auto]">
+            <div className="grid w-full gap-3 md:grid-cols-[repeat(2,minmax(180px,1fr))] xl:w-auto xl:grid-cols-[repeat(2,minmax(180px,1fr))_auto_auto]">
               <label className="grid gap-2 text-sm text-neutral-700">
                 <span className="font-medium">Fecha desde</span>
                 <input
