@@ -16,6 +16,7 @@ export function useClientOptions(enabled: boolean): UseClientOptionsResult {
   const [clients, setClients] = useState<OrderCustomerOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasFetched, setHasFetched] = useState(false);
 
   const loadClients = async () => {
     setLoading(true);
@@ -28,17 +29,26 @@ export function useClientOptions(enabled: boolean): UseClientOptionsResult {
       setClients([]);
       setError(getApiErrorMessage(requestError, 'No se pudieron cargar los clientes.'));
     } finally {
+      setHasFetched(true);
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (!enabled || clients.length > 0 || loading) {
+    if (!enabled || hasFetched || loading) {
       return;
     }
 
     void loadClients();
-  }, [clients.length, enabled, loading]);
+  }, [enabled, hasFetched, loading]);
+
+  useEffect(() => {
+    if (enabled) {
+      return;
+    }
+
+    setHasFetched(false);
+  }, [enabled]);
 
   return {
     clients,

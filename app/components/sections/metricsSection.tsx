@@ -3,11 +3,16 @@
 import { useRef, useState } from 'react';
 import { normalizeOrderDetail } from '@/app/lib/orderAdapters';
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
   Cell,
   LabelList,
+  Legend,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,25 +27,14 @@ import {
 } from '@/app/services/metricsServices';
 import type { OrderDetail } from '@/types';
 
-function getMaxValue(values: number[]) {
-  return values.length > 0 ? Math.max(...values, 1) : 1;
-}
-
-function formatDateLabel(value: string | null) {
-  if (!value) {
-    return '-';
-  }
-
-  const normalizedValue = value.includes(' ') ? value.replace(' ', 'T') : value;
-  const parsedDate = new Date(normalizedValue);
-  if (Number.isNaN(parsedDate.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat('es-AR', {
-    dateStyle: 'medium',
-  }).format(parsedDate);
-}
+const CHART_COLORS = {
+  amber: '#f59e0b',
+  amberDeep: '#d97706',
+  amberSoft: '#fbbf24',
+  copper: '#c2410c',
+  ink: '#171717',
+  slate: '#737373',
+};
 
 function formatDateTimeLabel(value: string | null) {
   if (!value) {
@@ -60,6 +54,13 @@ function formatDateTimeLabel(value: string | null) {
 }
 
 function formatMinutesLabel(value: number) {
+  return new Intl.NumberFormat('es-AR', {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
+  }).format(value);
+}
+
+function formatPercentageLabel(value: number) {
   return new Intl.NumberFormat('es-AR', {
     maximumFractionDigits: 1,
     minimumFractionDigits: value % 1 === 0 ? 0 : 1,
@@ -99,6 +100,16 @@ function MetricsTooltip({
   }
 
   const currentPayload = payload[0]?.payload ?? {};
+  const resolvedLabel =
+    typeof label === 'string' && label.trim()
+      ? label
+      : typeof currentPayload.productName === 'string' && currentPayload.productName.trim()
+        ? currentPayload.productName
+        : typeof currentPayload.customerName === 'string' && currentPayload.customerName.trim()
+          ? currentPayload.customerName
+        : typeof currentPayload.name === 'string' && currentPayload.name.trim()
+          ? currentPayload.name
+          : '-';
   const formattedValue =
     typeof currentPayload.formattedValue === 'string'
       ? currentPayload.formattedValue
@@ -110,9 +121,9 @@ function MetricsTooltip({
   const rangeLabel = typeof currentPayload.rangeLabel === 'string' ? currentPayload.rangeLabel : null;
 
   return (
-    <div className="rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-lg">
-      <p className="text-sm font-semibold text-neutral-950">{label}</p>
-      <p className="mt-1 text-sm text-neutral-600">{formattedValue}</p>
+    <div className="min-w-[164px] rounded-3xl border border-white/70 bg-white/95 px-4 py-3 shadow-[0_18px_45px_-28px_rgba(0,0,0,0.45)] backdrop-blur">
+      <p className="text-sm font-semibold tracking-tight text-neutral-950">{resolvedLabel}</p>
+      <p className="mt-2 text-lg font-semibold text-amber-600">{formattedValue}</p>
       {secondaryLabel ? <p className="mt-1 text-xs text-neutral-500">{secondaryLabel}</p> : null}
       {rangeLabel ? <p className="mt-1 text-xs text-neutral-500">{rangeLabel}</p> : null}
     </div>
@@ -124,8 +135,6 @@ function DeliveryTimelineChart({
 }: {
   buckets: { count: number; label: string }[];
 }) {
-  const maxCount = getMaxValue(buckets.map((bucket) => bucket.count));
-
   if (buckets.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-black/10 bg-stone-50 px-4 py-6 text-sm text-neutral-500">
@@ -134,103 +143,71 @@ function DeliveryTimelineChart({
     );
   }
 
-  const chartWidth = 720;
-  const chartHeight = 260;
-  const paddingX = 24;
-  const paddingTop = 20;
-  const paddingBottom = 34;
-  const innerWidth = chartWidth - paddingX * 2;
-  const innerHeight = chartHeight - paddingTop - paddingBottom;
-  const stepX = buckets.length > 1 ? innerWidth / (buckets.length - 1) : 0;
-
-  const points = buckets.map((bucket, index) => {
-    const x = paddingX + stepX * index;
-    const y =
-      paddingTop + innerHeight - (bucket.count / maxCount) * innerHeight;
-
-    return {
-      ...bucket,
-      x,
-      y,
-    };
-  });
-
-  const linePath = points
-    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-    .join(' ');
-
-  const areaPath = `${linePath} L ${paddingX + innerWidth} ${chartHeight - paddingBottom} L ${paddingX} ${chartHeight - paddingBottom} Z`;
-  const yAxisLabels = Array.from({ length: 4 }).map((_, index) => {
-    const value = Math.round((maxCount / 3) * (3 - index));
-    const y = paddingTop + (innerHeight / 3) * index;
-
-    return { value, y };
-  });
+  const chartData = buckets.map((bucket) => ({
+    ...bucket,
+    formattedValue: `${bucket.count}`,
+    secondaryLabel: `${bucket.count} pedidos en la franja`,
+  }));
 
   return (
-    <div className="rounded-[28px] border border-black/10 bg-stone-50 p-4">
-      <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="h-auto w-full">
-        <defs>
-          <linearGradient id="deliveryArea" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.04" />
-          </linearGradient>
-        </defs>
-
-        {yAxisLabels.map((label) => (
-          <g key={`${label.value}-${label.y}`}>
-            <line
-              x1={paddingX}
-              x2={paddingX + innerWidth}
-              y1={label.y}
-              y2={label.y}
-              stroke="#d6d3d1"
-              strokeDasharray="4 6"
+    <div className="rounded-[28px] border border-black/10 bg-[linear-gradient(180deg,_#fffaf0_0%,_#ffffff_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]">
+      <div className="h-[320px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={chartData} margin={{ top: 16, right: 16, bottom: 12, left: 0 }}>
+            <defs>
+              <linearGradient id="deliveryAreaGradient" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stopColor={CHART_COLORS.amber} stopOpacity="0.34" />
+                <stop offset="75%" stopColor={CHART_COLORS.amberSoft} stopOpacity="0.08" />
+                <stop offset="100%" stopColor={CHART_COLORS.amberSoft} stopOpacity="0.02" />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#e7e5e4" strokeDasharray="4 6" vertical={false} />
+            <XAxis
+              dataKey="label"
+              tick={{ fill: CHART_COLORS.slate, fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
             />
-            <text
-              x={4}
-              y={label.y + 4}
-              className="fill-neutral-500 text-[10px]"
+            <YAxis
+              tick={{ fill: CHART_COLORS.slate, fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+              allowDecimals={false}
+            />
+            <Tooltip
+              content={<MetricsTooltip />}
+              cursor={{ stroke: 'rgba(245, 158, 11, 0.25)', strokeWidth: 2 }}
+            />
+            <Area
+              type="monotone"
+              dataKey="count"
+              stroke={CHART_COLORS.ink}
+              strokeWidth={3}
+              fill="url(#deliveryAreaGradient)"
+              activeDot={{ r: 6, fill: CHART_COLORS.amber, stroke: '#fff', strokeWidth: 3 }}
+              dot={{ r: 4, fill: CHART_COLORS.amber, stroke: CHART_COLORS.ink, strokeWidth: 2 }}
             >
-              {label.value}
-            </text>
-          </g>
-        ))}
-
-        <path d={areaPath} fill="url(#deliveryArea)" />
-        <path
-          d={linePath}
-          fill="none"
-          stroke="#111827"
-          strokeWidth="3"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
-
-        {points.map((point) => (
-          <g key={point.label}>
-            <circle cx={point.x} cy={point.y} r="4.5" fill="#f59e0b" stroke="#111827" strokeWidth="2" />
-            <text
-              x={point.x}
-              y={point.y - 10}
-              textAnchor="middle"
-              className="fill-neutral-600 text-[10px]"
-            >
-              {point.count}
-            </text>
-            <text
-              x={point.x}
-              y={chartHeight - 10}
-              textAnchor="middle"
-              className="fill-neutral-500 text-[10px]"
-            >
-              {point.label}
-            </text>
-          </g>
-        ))}
-      </svg>
+              <LabelList
+                dataKey="formattedValue"
+                position="top"
+                offset={8}
+                fill={CHART_COLORS.ink}
+                fontSize={12}
+              />
+            </Area>
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
+}
+
+function formatCompactLabel(value: string, maxLength = 14) {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength - 1)}…`;
 }
 
 function StateCycleTimeChart({
@@ -261,19 +238,25 @@ function StateCycleTimeChart({
   }));
 
   return (
-    <div className="overflow-x-auto rounded-[24px] border border-black/10 bg-white p-4">
+    <div className="overflow-x-auto rounded-[24px] border border-black/10 bg-[linear-gradient(180deg,_#fffaf0_0%,_#ffffff_100%)] p-4">
       <div className="h-[320px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
             layout="vertical"
             margin={{ top: 8, right: 56, bottom: 8, left: 8 }}
-            barCategoryGap={18}
+            barCategoryGap={14}
           >
-            <CartesianGrid stroke="#e7e5e4" strokeDasharray="4 6" horizontal={false} />
+            <defs>
+              <linearGradient id="stateTimeBar" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0%" stopColor={CHART_COLORS.amber} />
+                <stop offset="100%" stopColor={CHART_COLORS.amberDeep} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#ede9e7" strokeDasharray="4 6" horizontal={false} />
             <XAxis
               type="number"
-              tick={{ fill: '#737373', fontSize: 12 }}
+              tick={{ fill: CHART_COLORS.slate, fontSize: 12 }}
               tickFormatter={(value: number) => `${formatMinutesLabel(value)} min`}
               axisLine={false}
               tickLine={false}
@@ -281,24 +264,25 @@ function StateCycleTimeChart({
             <YAxis
               type="category"
               dataKey="stateName"
-              width={120}
-              tick={{ fill: '#171717', fontSize: 12 }}
+              width={132}
+              tick={{ fill: CHART_COLORS.ink, fontSize: 12 }}
+              tickFormatter={(value: string) => formatCompactLabel(value)}
               axisLine={false}
               tickLine={false}
             />
             <Tooltip content={<MetricsTooltip />} cursor={{ fill: 'rgba(245, 158, 11, 0.08)' }} />
-            <Bar dataKey="averageMinutes" radius={[0, 18, 18, 0]}>
+            <Bar dataKey="averageMinutes" radius={[0, 18, 18, 0]} barSize={28}>
               <LabelList
                 dataKey="averageFormatted"
                 position="right"
                 offset={12}
-                fill="#171717"
+                fill={CHART_COLORS.ink}
                 fontSize={12}
               />
               {chartData.map((item) => (
                 <Cell
                   key={item.stateId}
-                  fill={selectedStateId === item.stateId ? '#d97706' : '#f59e0b'}
+                  fill={selectedStateId === item.stateId ? CHART_COLORS.copper : 'url(#stateTimeBar)'}
                   cursor="pointer"
                   onClick={() => onSelectState(item)}
                 />
@@ -352,36 +336,42 @@ function StateDetailChart({
         </button>
       </div>
 
-      <div className="overflow-x-auto rounded-[24px] border border-black/10 bg-white p-4">
+      <div className="overflow-x-auto rounded-[24px] border border-black/10 bg-[linear-gradient(180deg,_#fffaf0_0%,_#ffffff_100%)] p-4">
         <div className="h-[360px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 16, right: 12, bottom: 16, left: 0 }}>
-              <CartesianGrid stroke="#e7e5e4" strokeDasharray="4 6" vertical={false} />
+              <defs>
+                <linearGradient id="stateDetailBar" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0%" stopColor={CHART_COLORS.amber} />
+                  <stop offset="100%" stopColor={CHART_COLORS.amberDeep} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="#ede9e7" strokeDasharray="4 6" vertical={false} />
               <XAxis
                 dataKey="orderLabel"
-                tick={{ fill: '#171717', fontSize: 12 }}
+                tick={{ fill: CHART_COLORS.ink, fontSize: 12 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: '#737373', fontSize: 12 }}
+                tick={{ fill: CHART_COLORS.slate, fontSize: 12 }}
                 tickFormatter={(value: number) => `${formatMinutesLabel(value)} min`}
                 axisLine={false}
                 tickLine={false}
               />
               <Tooltip content={<MetricsTooltip />} cursor={{ fill: 'rgba(245, 158, 11, 0.08)' }} />
-              <Bar dataKey="timeMinutes" radius={[18, 18, 0, 0]}>
+              <Bar dataKey="timeMinutes" radius={[18, 18, 0, 0]} barSize={42}>
                 <LabelList
                   dataKey="formattedValue"
                   position="top"
                   offset={8}
-                  fill="#171717"
+                  fill={CHART_COLORS.ink}
                   fontSize={12}
                 />
                 {chartData.map((item) => (
                   <Cell
                     key={`${item.orderId}-${item.start ?? 'sin-inicio'}-${item.end ?? 'sin-fin'}`}
-                    fill="#f59e0b"
+                    fill="url(#stateDetailBar)"
                     cursor="pointer"
                     onClick={() => onSelectOrder(item.orderId)}
                   />
@@ -522,10 +512,8 @@ function OrderDetailDrilldown({
 }
 
 function StateCycleTimeCard({
-  appliedDateRange,
   report,
 }: {
-  appliedDateRange: { endDate: string; startDate: string };
   report: {
     averages: {
       averageFormatted: string;
@@ -663,25 +651,11 @@ function StateCycleTimeCard({
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
           Tiempos por estado
         </p>
-        <h2 className="mt-2 text-2xl font-semibold text-neutral-950">
-          Cuellos de botella del flujo entregado
-        </h2>
       </div>
 
       <div className="mt-6">
         <div className="rounded-[28px] border border-black/10 bg-stone-50 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 bg-white px-4 py-4">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
-                Periodo aplicado
-              </p>
-              <p className="mt-2 text-sm font-medium text-neutral-900">
-                {formatDateLabel(appliedDateRange.startDate)} al {formatDateLabel(appliedDateRange.endDate)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4">
+          <div>
             {selectedStateId === null ? (
               report.averages.length > 0 ? (
                 <StateCycleTimeChart
@@ -734,58 +708,280 @@ function StateCycleTimeCard({
   );
 }
 
-function MissingMetricCard({
-  endpoint,
-  reason,
-  shape,
-  title,
-  whyItHelps,
+function CostAndProfitCard({
+  report,
 }: {
-  endpoint: string;
-  reason: string;
-  shape: string;
-  title: string;
-  whyItHelps: string;
+  report: {
+    cost: number;
+    orderCount: number;
+    profit: number;
+    profitMargin: number;
+    revenue: number;
+  };
 }) {
+  const safeRevenue = Math.max(report.revenue, 0);
+  const costWidth = safeRevenue > 0 ? Math.min((report.cost / safeRevenue) * 100, 100) : 0;
+  const profitWidth =
+    safeRevenue > 0 ? Math.min((Math.abs(report.profit) / safeRevenue) * 100, 100) : 0;
+  const marginTone =
+    report.profit > 0
+      ? 'text-emerald-700'
+      : report.profit < 0
+        ? 'text-red-700'
+        : 'text-neutral-700';
+
   return (
-    <div className="rounded-[28px] border border-amber-200 bg-amber-50 p-5">
-      <div className="flex items-center justify-between gap-4">
+    <section className="rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.18)]">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-amber-700">
-            Requiere backend
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+            Costos y ganancias
           </p>
-          <h3 className="mt-2 text-xl font-semibold text-amber-950">{title}</h3>
         </div>
-        <div className="rounded-2xl border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-amber-800">
-          Bloqueada
+        <div className="rounded-2xl border border-black/10 bg-stone-50 px-4 py-3 text-right">
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Margen</p>
+          <p className={`mt-2 text-2xl font-semibold ${marginTone}`}>
+            {formatPercentageLabel(report.profitMargin)}%
+          </p>
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4">
-        <div className="rounded-2xl border border-dashed border-amber-300 bg-white px-4 py-6">
-          <div className="grid h-28 grid-cols-6 items-end gap-2">
-            {[24, 56, 36, 72, 48, 60].map((height, index) => (
+      <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-[28px] border border-black/10 bg-stone-50 px-5 py-4">
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Facturacion</p>
+          <p className="mt-3 text-3xl font-semibold text-neutral-950">
+            {formatCurrency(report.revenue)}
+          </p>
+        </div>
+        <div className="rounded-[28px] border border-black/10 bg-stone-50 px-5 py-4">
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Costo</p>
+          <p className="mt-3 text-3xl font-semibold text-neutral-950">
+            {formatCurrency(report.cost)}
+          </p>
+        </div>
+        <div className="rounded-[28px] border border-black/10 bg-stone-50 px-5 py-4">
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Ganancia</p>
+          <p className={`mt-3 text-3xl font-semibold ${marginTone}`}>
+            {formatCurrency(report.profit)}
+          </p>
+        </div>
+        <div className="rounded-[28px] border border-black/10 bg-stone-50 px-5 py-4">
+          <p className="text-xs uppercase tracking-wide text-neutral-500">Ordenes consideradas</p>
+          <p className="mt-3 text-3xl font-semibold text-neutral-950">{report.orderCount}</p>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[28px] border border-black/10 bg-stone-50 p-5">
+        <div className="space-y-4">
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-4 text-sm">
+              <span className="font-medium text-neutral-700">Costo sobre facturacion</span>
+              <span className="text-neutral-500">{formatPercentageLabel(costWidth)}%</span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-white">
               <div
-                key={index}
-                className="rounded-t-xl bg-amber-100"
-                style={{ height: `${height}%` }}
+                className="h-full rounded-full bg-amber-500"
+                style={{ width: `${costWidth}%` }}
               />
-            ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-4 text-sm">
+              <span className="font-medium text-neutral-700">Ganancia sobre facturacion</span>
+              <span className={marginTone}>{formatPercentageLabel(report.profitMargin)}%</span>
+            </div>
+            <div className="h-3 overflow-hidden rounded-full bg-white">
+              <div
+                className={`h-full rounded-full ${report.profit >= 0 ? 'bg-emerald-500' : 'bg-red-500'}`}
+                style={{ width: `${profitWidth}%` }}
+              />
+            </div>
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        <div className="space-y-3 text-sm text-amber-950">
-          <p>{reason}</p>
-          <p>
-            <span className="font-semibold">Endpoint sugerido:</span> <code>{endpoint}</code>
-          </p>
-          <p>
-            <span className="font-semibold">Respuesta esperada:</span> <code>{shape}</code>
-          </p>
-          <p>
-            <span className="font-semibold">Por que optimiza:</span> {whyItHelps}
+function TopSellingProductsChart({
+  items,
+}: {
+  items: {
+    productId: number;
+    productName: string;
+    quantitySold: number;
+  }[];
+}) {
+  const chartData = items.map((item) => ({
+    ...item,
+    formattedValue: `${item.quantitySold}`,
+  }));
+  const chartColors = ['#f59e0b', '#d97706', '#fbbf24', '#fcd34d', '#92400e'];
+
+  if (chartData.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-black/10 bg-stone-50 px-4 py-6 text-sm text-neutral-500">
+        No hay productos vendidos dentro del periodo seleccionado.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-[24px] border border-black/10 bg-white p-4">
+      <div className="h-[360px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+            <Tooltip content={<MetricsTooltip />} />
+            <Legend
+              verticalAlign="bottom"
+              align="center"
+              iconType="circle"
+              formatter={(value: string) => (
+                <span className="text-sm text-neutral-700">{value}</span>
+              )}
+            />
+            <Pie
+              data={chartData}
+              dataKey="quantitySold"
+              nameKey="productName"
+              cx="50%"
+              cy="46%"
+              innerRadius={58}
+              outerRadius={112}
+              paddingAngle={3}
+              stroke="#fafaf9"
+              strokeWidth={2}
+            >
+              <LabelList
+                dataKey="formattedValue"
+                position="outside"
+                fill="#171717"
+                fontSize={12}
+              />
+              {chartData.map((item, index) => (
+                <Cell
+                  key={item.productId}
+                  fill={chartColors[index % chartColors.length]}
+                />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+function TopSellingProductsCard({
+  report,
+}: {
+  report: {
+    products: {
+      categoryId: number | null;
+      productId: number;
+      productName: string;
+      quantitySold: number;
+      unitPrice: number | null;
+    }[];
+    totalProducts: number;
+    totalProductsSold: number;
+  };
+}) {
+  const rankedProducts = report.products.filter((product) => product.quantitySold > 0).slice(0, 5);
+
+  return (
+    <section className="rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.18)]">
+      <div className="mb-6">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+            Productos
           </p>
         </div>
+      </div>
+
+      <TopSellingProductsChart items={rankedProducts} />
+    </section>
+  );
+}
+
+function TopCustomersChart({
+  items,
+}: {
+  items: {
+    customerName: string;
+    orders: number;
+    revenue: number;
+  }[];
+}) {
+  const chartColors = ['#1e3a8a', '#0f766e', '#7c3aed', '#be185d', '#334155'];
+  const chartData = items.map((item, index) => ({
+    ...item,
+    color: chartColors[index % chartColors.length],
+    formattedValue: `${item.orders}`,
+  }));
+
+  if (chartData.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-black/10 bg-stone-50 px-4 py-6 text-sm text-neutral-500">
+        Todavia no hay clientes suficientes para destacar en el ranking.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 rounded-[24px] border border-black/10 bg-white p-4">
+      <div className="h-[320px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+            <Tooltip content={<MetricsTooltip />} />
+            <Pie
+              data={chartData}
+              dataKey="orders"
+              nameKey="customerName"
+              cx="50%"
+              cy="50%"
+              innerRadius={58}
+              outerRadius={112}
+              paddingAngle={4}
+              stroke="#fafaf9"
+              strokeWidth={3}
+            >
+              <LabelList
+                dataKey="orders"
+                position="outside"
+                fill="#171717"
+                fontSize={12}
+              />
+              {chartData.map((item, index) => (
+                <Cell
+                  key={`${item.customerName}-${index}`}
+                  fill={item.color}
+                />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      <div className="grid gap-2">
+        {chartData.map((item) => (
+          <div
+            key={item.customerName}
+            className="flex items-center justify-between rounded-2xl bg-stone-50 px-4 py-3"
+          >
+            <div className="flex min-w-0 items-center gap-3">
+              <span
+                className="h-3.5 w-3.5 shrink-0 rounded-full"
+                style={{ backgroundColor: item.color }}
+              />
+              <span className="truncate text-sm font-medium text-neutral-900">
+                {item.customerName}
+              </span>
+            </div>
+            <span className="text-sm font-semibold text-neutral-700">{item.orders}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -825,9 +1021,6 @@ export default function MetricsSection() {
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
                 Dashboard administrativo
               </p>
-              <h1 className="text-3xl font-semibold tracking-tight text-neutral-950">
-                Metricas operativas
-              </h1>
             </div>
 
             <div className="grid w-full gap-3 md:grid-cols-[repeat(2,minmax(180px,1fr))] xl:w-auto xl:grid-cols-[repeat(2,minmax(180px,1fr))_auto_auto]">
@@ -915,83 +1108,40 @@ export default function MetricsSection() {
           ) : null}
         </section>
 
-        {data ? (
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.7fr)]">
-            <section className="rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.18)]">
-              <div className="mb-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
-                  Horarios de entrega
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-neutral-950">
-                  Concentracion de pedidos por franja
-                </h2>
-              </div>
-              <DeliveryTimelineChart buckets={data.deliveryBuckets} />
-            </section>
+        {data ? <CostAndProfitCard report={data.costAndProfit} /> : null}
 
+        {data ? (
+          <section className="rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.18)]">
+            <div className="mb-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
+                Horarios de entrega
+              </p>
+            </div>
+            <DeliveryTimelineChart buckets={data.deliveryBuckets} />
+          </section>
+        ) : null}
+
+        {data ? (
+          <div className="grid gap-6 xl:grid-cols-2">
             <section className="rounded-[32px] border border-black/10 bg-white/90 p-6 shadow-[0_24px_80px_-36px_rgba(0,0,0,0.18)]">
               <div className="mb-6">
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-neutral-500">
                   Clientes destacados
                 </p>
-                <h2 className="mt-2 text-2xl font-semibold text-neutral-950">
-                  Top clientes por facturacion
-                </h2>
               </div>
 
-              <div className="grid gap-3">
-                {data.topCustomers.length > 0 ? (
-                  data.topCustomers.map((customer, index) => (
-                    <div
-                      key={`${customer.customerName}-${index}`}
-                      className="rounded-2xl bg-stone-50 px-4 py-4"
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div>
-                          <p className="font-medium text-neutral-900">{customer.customerName}</p>
-                          <p className="mt-1 text-sm text-neutral-500">
-                            {customer.orders} ordenes registradas
-                          </p>
-                        </div>
-                        <span className="text-sm font-semibold text-neutral-900">
-                          {formatCurrency(customer.revenue)}
-                        </span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-black/10 bg-stone-50 px-4 py-6 text-sm text-neutral-500">
-                    Todavia no hay clientes suficientes para destacar en el ranking.
-                  </div>
-                )}
-              </div>
+              <TopCustomersChart items={data.topCustomers} />
 
-              <div className="mt-5 rounded-2xl border border-black/10 bg-neutral-950 px-4 py-4 text-white">
-                <p className="text-xs uppercase tracking-wide text-neutral-400">Extra sugerida</p>
-                <h3 className="mt-2 text-lg font-semibold">Pedidos listos para entrega</h3>
-                <p className="mt-2 text-3xl font-semibold">{data.readyOrders.length}</p>
-              </div>
             </section>
+
+            <TopSellingProductsCard report={data.topSellingProducts} />
           </div>
         ) : null}
 
         {data ? (
           <StateCycleTimeCard
             report={data.stateCycleTimes}
-            appliedDateRange={appliedDateRange}
           />
-        ) : null}
-
-        {data ? (
-          <div className="grid gap-6 xl:grid-cols-2">
-            <MissingMetricCard
-              title="Ganancias vs costos"
-              endpoint={data.missingMetrics.profitVsCost.endpoint}
-              reason={data.missingMetrics.profitVsCost.reason}
-              shape={data.missingMetrics.profitVsCost.shape}
-              whyItHelps={data.missingMetrics.profitVsCost.whyItHelps}
-            />
-          </div>
         ) : null}
       </div>
     </div>

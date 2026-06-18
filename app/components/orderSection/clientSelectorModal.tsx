@@ -27,6 +27,7 @@ export default function ClientSelectorModal({
   }
 
   const normalizedQuery = query.trim().toLowerCase();
+  const hasActiveSearch = normalizedQuery.length > 0;
   const visibleClients = clients.filter((client) => {
     if (!normalizedQuery) {
       return true;
@@ -53,14 +54,12 @@ export default function ClientSelectorModal({
       >
         <div className="border-b border-black/10 px-6 py-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-1">
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-400">
-                Recepcion
-              </p>
-              <h3 id="client-selector-title" className="text-2xl font-semibold text-neutral-900">
-                Seleccionar cliente
-              </h3>
-            </div>
+            <h3
+              id="client-selector-title"
+              className="text-xs font-semibold uppercase tracking-[0.24em] text-neutral-400"
+            >
+              Seleccionar cliente
+            </h3>
             <button
               type="button"
               onClick={onClose}
@@ -132,13 +131,16 @@ export default function ClientSelectorModal({
             <div className="grid gap-4 rounded-[28px] border border-dashed border-black/10 bg-white p-6 text-sm text-neutral-600 shadow-sm">
               <div className="space-y-1">
                 <p className="text-base font-semibold text-neutral-900">
-                  No encontramos clientes con esa busqueda
+                  {hasActiveSearch
+                    ? 'No encontramos clientes con esa busqueda'
+                    : 'Aun no hay clientes registrados'}
                 </p>
-                <p>
-                  Proba con otro nombre, otro numero de WhatsApp o carga un cliente nuevo.
-                </p>
+                {hasActiveSearch ? (
+                  <p>Proba con otro nombre, otro numero de WhatsApp o carga un cliente nuevo.</p>
+                ) : null}
               </div>
-              <div>
+              {hasActiveSearch ? (
+                <div>
                 <button
                   type="button"
                   onClick={() => {
@@ -149,7 +151,8 @@ export default function ClientSelectorModal({
                 >
                   Crear cliente nuevo
                 </button>
-              </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
 

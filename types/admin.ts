@@ -47,11 +47,13 @@ export type Ingredient = {
   id: number;
   nombre: string;
   unidad_medida: string;
+  costo: number;
 };
 
 export type IngredientInput = {
   nombre: string;
   unidad_medida: string;
+  costo: number;
 };
 
 export type RecipeIngredient = {

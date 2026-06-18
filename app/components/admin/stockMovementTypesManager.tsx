@@ -62,7 +62,6 @@ export default function StockMovementTypesManager() {
   return (
     <CrudManager
       title="Tipo de movimiento"
-      subtitle="ABM conectado a la API"
       loading={loading}
       error={error}
       items={items}

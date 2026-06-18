@@ -47,11 +47,13 @@ export default function CategoriesManager() {
   return (
     <CrudManager
       title="Categoria"
-      subtitle="ABM conectado a la API"
       loading={loading}
       error={error}
       items={items}
       emptyMessage="Todavia no hay categorias registradas."
+      searchPlaceholder="Buscar categorias por nombre"
+      searchEmptyMessage="No se encontraron categorias con ese nombre."
+      getSearchText={(item) => item.nombre}
       fields={[
         {
           label: 'Nombre',

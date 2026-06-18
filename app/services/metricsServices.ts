@@ -41,6 +41,14 @@ export type MetricsCustomerRow = {
   revenue: number;
 };
 
+export type MetricsTopSellingProduct = {
+  categoryId: number | null;
+  productId: number;
+  productName: string;
+  quantitySold: number;
+  unitPrice: number | null;
+};
+
 export type MetricsStateCycleTime = {
   averageFormatted: string;
   averageMinutes: number;
@@ -71,23 +79,35 @@ export type MetricsStateCycleTimeReport = {
   rangeStart: string | null;
 };
 
-export type MissingMetricsSpec = {
-  reason: string;
-  endpoint: string;
-  shape: string;
-  whyItHelps: string;
+export type MetricsCostAndProfitReport = {
+  cost: number;
+  isDefaultRange: boolean;
+  orderCount: number;
+  profit: number;
+  profitMargin: number;
+  rangeEnd: string | null;
+  rangeStart: string | null;
+  revenue: number;
+};
+
+export type MetricsTopSellingProductsReport = {
+  isDefaultRange: boolean;
+  products: MetricsTopSellingProduct[];
+  rangeEnd: string | null;
+  rangeStart: string | null;
+  totalProducts: number;
+  totalProductsSold: number;
 };
 
 export type MetricsDashboardData = {
   byState: MetricsStateDistribution[];
+  costAndProfit: MetricsCostAndProfitReport;
   deliveryBuckets: MetricsDeliveryBucket[];
-  missingMetrics: {
-    profitVsCost: MissingMetricsSpec;
-  };
   readyOrders: OrderListItem[];
   stateCycleTimes: MetricsStateCycleTimeReport;
   summary: MetricsSummary;
   topCustomers: MetricsCustomerRow[];
+  topSellingProducts: MetricsTopSellingProductsReport;
 };
 
 type TotalBillingResponse = {
@@ -121,6 +141,31 @@ type AverageTimeByStateResponse = {
     id_estado?: number;
     promedio_formateado?: string;
     promedio_minutos?: number | string;
+  }>;
+  rango_por_defecto?: boolean;
+};
+
+type CostAndProfitResponse = {
+  cantidad_ordenes?: number;
+  costo?: number | string;
+  facturacion?: number | string;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  ganancia?: number | string;
+  rango_por_defecto?: boolean;
+};
+
+type TopSellingProductsResponse = {
+  cantidad_productos?: number;
+  cantidad_productos_vendidos?: number;
+  fecha_desde?: string;
+  fecha_hasta?: string;
+  productos?: Array<{
+    cantidad_vendida?: number | string;
+    id_categoria?: number;
+    id_producto?: number;
+    nombre?: string;
+    precio?: number | string;
   }>;
   rango_por_defecto?: boolean;
 };
@@ -258,6 +303,20 @@ async function getDeliveryTimeConcentration(params?: AverageTimeByStateParams) {
 
 async function getAverageTimeByState(params?: AverageTimeByStateParams) {
   const { data } = await api.get<AverageTimeByStateResponse>('/metrics/average-time-by-state', {
+    params: buildMetricsQueryParams(params),
+  });
+  return data;
+}
+
+async function getCostAndProfit(params?: AverageTimeByStateParams) {
+  const { data } = await api.get<CostAndProfitResponse>('/metrics/cost-and-profit', {
+    params: buildMetricsQueryParams(params),
+  });
+  return data;
+}
+
+async function getTopSellingProducts(params?: AverageTimeByStateParams) {
+  const { data } = await api.get<TopSellingProductsResponse>('/metrics/top-selling-products', {
     params: buildMetricsQueryParams(params),
   });
   return data;
@@ -490,35 +549,114 @@ function buildStateCycleTimes(payload: AverageTimeByStateResponse): MetricsState
   };
 }
 
+function buildCostAndProfit(payload: CostAndProfitResponse): MetricsCostAndProfitReport {
+  const revenue = toNumber(payload.facturacion) ?? 0;
+  const cost = toNumber(payload.costo) ?? 0;
+  const profit = toNumber(payload.ganancia) ?? revenue - cost;
+
+  return {
+    cost,
+    isDefaultRange: Boolean(payload.rango_por_defecto),
+    orderCount: toNumber(payload.cantidad_ordenes) ?? 0,
+    profit,
+    profitMargin: revenue > 0 ? (profit / revenue) * 100 : 0,
+    rangeEnd:
+      typeof payload.fecha_hasta === 'string' && payload.fecha_hasta.trim()
+        ? payload.fecha_hasta
+        : null,
+    rangeStart:
+      typeof payload.fecha_desde === 'string' && payload.fecha_desde.trim()
+        ? payload.fecha_desde
+        : null,
+    revenue,
+  };
+}
+
+function buildTopSellingProducts(
+  payload: TopSellingProductsResponse,
+): MetricsTopSellingProductsReport {
+  const products = Array.isArray(payload.productos)
+    ? payload.productos
+        .map((product) => {
+          const productId = toNumber(product.id_producto);
+          const categoryId = toNumber(product.id_categoria);
+          const quantitySold = toNumber(product.cantidad_vendida);
+          const unitPrice = toNumber(product.precio);
+
+          if (productId === null || quantitySold === null) {
+            return null;
+          }
+
+          return {
+            categoryId,
+            productId,
+            productName:
+              typeof product.nombre === 'string' && product.nombre.trim()
+                ? product.nombre
+                : `Producto ${productId}`,
+            quantitySold,
+            unitPrice,
+          };
+        })
+        .filter((product): product is MetricsTopSellingProduct => product !== null)
+        .sort((leftProduct, rightProduct) => {
+          if (rightProduct.quantitySold !== leftProduct.quantitySold) {
+            return rightProduct.quantitySold - leftProduct.quantitySold;
+          }
+
+          return (rightProduct.unitPrice ?? 0) - (leftProduct.unitPrice ?? 0);
+        })
+    : [];
+
+  return {
+    isDefaultRange: Boolean(payload.rango_por_defecto),
+    products,
+    rangeEnd:
+      typeof payload.fecha_hasta === 'string' && payload.fecha_hasta.trim()
+        ? payload.fecha_hasta
+        : null,
+    rangeStart:
+      typeof payload.fecha_desde === 'string' && payload.fecha_desde.trim()
+        ? payload.fecha_desde
+        : null,
+    totalProducts: toNumber(payload.cantidad_productos) ?? products.length,
+    totalProductsSold: toNumber(payload.cantidad_productos_vendidos) ?? products.filter((product) => product.quantitySold > 0).length,
+  };
+}
+
 export async function getMetricsDashboardData(
   params?: AverageTimeByStateParams,
 ): Promise<MetricsDashboardData> {
   const states = await listStates();
-  const [snapshots, totalBilling, deliveryTimeConcentration, averageTimeByState] = await Promise.all([
-    listStatesWithOrders(states),
-    getTotalBilling(params),
-    getDeliveryTimeConcentration(params),
-    getAverageTimeByState(params),
-  ]);
+  const [
+    snapshots,
+    totalBilling,
+    deliveryTimeConcentration,
+    averageTimeByState,
+    costAndProfit,
+    topSellingProducts,
+  ] =
+    await Promise.all([
+      listStatesWithOrders(states),
+      getTotalBilling(params),
+      getDeliveryTimeConcentration(params),
+      getAverageTimeByState(params),
+      getCostAndProfit(params),
+      getTopSellingProducts(params),
+    ]);
   const byState = buildByState(snapshots);
   const readyOrders =
     snapshots.find((snapshot) => snapshot.stateName.toLowerCase().includes('listo'))?.orders ?? [];
 
   return {
     byState,
+    costAndProfit: buildCostAndProfit(costAndProfit),
     deliveryBuckets: buildDeliveryBuckets(deliveryTimeConcentration),
-    missingMetrics: {
-      profitVsCost: {
-        reason: 'La API actual devuelve totales de orden, pero no expone costos por pedido ni costo consolidado por producto/ingrediente.',
-        endpoint: 'GET /metrics/profit-overview?from=YYYY-MM-DD&to=YYYY-MM-DD',
-        shape: '{ revenue, cost, profit, margins: [{ label, revenue, cost, profit }] }',
-        whyItHelps: 'Evita reconstruir costos desde multiples recursos y permite graficar margen real con una sola llamada.',
-      },
-    },
     readyOrders,
     stateCycleTimes: buildStateCycleTimes(averageTimeByState),
     summary: buildSummary(snapshots, totalBilling),
     topCustomers: buildTopCustomers(snapshots),
+    topSellingProducts: buildTopSellingProducts(topSellingProducts),
   };
 }
 

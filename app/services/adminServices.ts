@@ -35,6 +35,10 @@ type CollectionPayload<T> =
       productos?: T[];
     };
 
+type IngredientPayload = Omit<Ingredient, 'costo'> & {
+  costo: number | string | null;
+};
+
 function extractCollection<T>(payload: CollectionPayload<T>): T[] {
   if (Array.isArray(payload)) {
     return payload;
@@ -58,6 +62,27 @@ function extractCollection<T>(payload: CollectionPayload<T>): T[] {
 async function listResource<T>(path: string, params?: ListQuery): Promise<T[]> {
   const { data } = await api.get<CollectionPayload<T>>(path, { params });
   return extractCollection(data);
+}
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const normalizedValue = value.replace(/\./g, '').replace(',', '.').replace(/[^0-9.-]/g, '');
+    const parsedValue = Number(normalizedValue);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
+  }
+
+  return null;
+}
+
+function normalizeIngredient(payload: IngredientPayload): Ingredient {
+  return {
+    ...payload,
+    costo: toNumber(payload.costo) ?? 0,
+  };
 }
 
 export function getApiErrorMessage(error: unknown, fallbackMessage: string): string {
@@ -120,20 +145,25 @@ export async function deleteCategory(id: number) {
 }
 
 export async function listIngredients() {
-  return listResource<Ingredient>(administrativePaths.ingredients.collection, {
+  const ingredients = await listResource<IngredientPayload>(administrativePaths.ingredients.collection, {
     page: 1,
     pageSize: 100,
   });
+
+  return ingredients.map(normalizeIngredient);
 }
 
 export async function createIngredient(payload: IngredientInput) {
-  const { data } = await api.post<Ingredient>(administrativePaths.ingredients.collection, payload);
-  return data;
+  const { data } = await api.post<IngredientPayload>(
+    administrativePaths.ingredients.collection,
+    payload,
+  );
+  return normalizeIngredient(data);
 }
 
 export async function updateIngredient(id: number, payload: IngredientInput) {
-  const { data } = await api.put<Ingredient>(administrativePaths.ingredients.detail(id), payload);
-  return data;
+  const { data } = await api.put<IngredientPayload>(administrativePaths.ingredients.detail(id), payload);
+  return normalizeIngredient(data);
 }
 
 export async function deleteIngredient(id: number) {

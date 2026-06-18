@@ -13,6 +13,25 @@ import type { CrudFormValues, Ingredient } from '@/types';
 
 const DEFAULT_UNIT_OPTIONS = ['g', 'kg', 'ml', 'l', 'unidad'];
 
+function formatCurrency(value: number) {
+  return new Intl.NumberFormat('es-AR', {
+    style: 'currency',
+    currency: 'ARS',
+    minimumFractionDigits: 2,
+  }).format(value);
+}
+
+function parseCostInput(value: string) {
+  const normalizedValue = value.trim().replace(',', '.');
+
+  if (normalizedValue.length === 0) {
+    return null;
+  }
+
+  const parsedValue = Number(normalizedValue);
+  return Number.isFinite(parsedValue) && parsedValue >= 0 ? parsedValue : null;
+}
+
 export default function IngredientsManager() {
   const { error, items, loading, refresh } = useCrudResource(
     listIngredients,
@@ -31,10 +50,17 @@ export default function IngredientsManager() {
   }));
 
   const handleCreate = async (values: CrudFormValues) => {
+    const cost = parseCostInput(values.costo);
+
+    if (cost === null) {
+      throw new Error('Ingresa un costo valido mayor o igual a 0.');
+    }
+
     try {
       await createIngredient({
         nombre: values.nombre.trim(),
         unidad_medida: values.unidad_medida.trim(),
+        costo: cost,
       });
       await refresh();
     } catch (requestError) {
@@ -43,10 +69,17 @@ export default function IngredientsManager() {
   };
 
   const handleUpdate = async (id: number, values: CrudFormValues) => {
+    const cost = parseCostInput(values.costo);
+
+    if (cost === null) {
+      throw new Error('Ingresa un costo valido mayor o igual a 0.');
+    }
+
     try {
       await updateIngredient(id, {
         nombre: values.nombre.trim(),
         unidad_medida: values.unidad_medida.trim(),
+        costo: cost,
       });
       await refresh();
     } catch (requestError) {
@@ -66,11 +99,13 @@ export default function IngredientsManager() {
   return (
     <CrudManager
       title="Ingrediente"
-      subtitle="ABM conectado a la API"
       loading={loading}
       error={error}
       items={items}
       emptyMessage="Todavia no hay ingredientes registrados."
+      searchPlaceholder="Buscar ingredientes por nombre"
+      searchEmptyMessage="No se encontraron ingredientes con ese nombre."
+      getSearchText={(item) => item.nombre}
       fields={[
         {
           label: 'Nombre',
@@ -86,17 +121,30 @@ export default function IngredientsManager() {
           type: 'select',
           options: unitOptions,
         },
+        {
+          label: 'Costo',
+          name: 'costo',
+          placeholder: 'Costo del ingrediente',
+          required: true,
+          step: '0.01',
+          type: 'number',
+        },
       ]}
       columns={[
         { header: 'ID', render: (item) => item.id },
         { header: 'Nombre', render: (item) => item.nombre },
         { header: 'Unidad', render: (item) => item.unidad_medida },
+        {
+          header: 'Costo',
+          render: (item) => (typeof item.costo === 'number' ? formatCurrency(item.costo) : '-'),
+        },
       ]}
       getItemId={(item) => item.id}
       getItemLabel={(item) => item.nombre}
       getFormValues={(item) => ({
         nombre: item.nombre,
         unidad_medida: item.unidad_medida,
+        costo: String(item.costo ?? ''),
       })}
       onCreate={handleCreate}
       onUpdate={handleUpdate}

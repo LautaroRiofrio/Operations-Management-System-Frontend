@@ -57,7 +57,6 @@ export default function StatesManager() {
   return (
     <CrudManager
       title="Estado"
-      subtitle="ABM conectado a la API"
       loading={loading}
       error={error}
       items={items}

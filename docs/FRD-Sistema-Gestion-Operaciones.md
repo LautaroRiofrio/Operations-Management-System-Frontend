@@ -4,314 +4,361 @@
 
 | Version | Fecha | Autor | Descripcion |
 | --- | --- | --- | --- |
+| 2.0 | 2026-06-18 | Codex | Reestructuracion integral del FRD tomando como base el BRD del 2026-04-22, el FRD de referencia y el estado real del frontend al 2026-06-18. |
 | 1.0 | 2026-05-23 | Codex | Version inicial del FRD adaptada al proyecto actual de Operations Management System Frontend. |
 
 ## 2. Alcance
 
 ### 2.1 Descripcion del proyecto / Objetivos
 
-El proyecto **Operations Management System Frontend** es una aplicacion web desarrollada con Next.js 16, React 19 y TypeScript para operar el flujo completo de pedidos de un negocio de elaboracion y entrega.
+El proyecto **Operations Management System Frontend** es una aplicacion web construida con Next.js 16, React 19 y TypeScript para operar el circuito completo de pedidos de un negocio de elaboracion y entrega.
 
-El sistema organiza el trabajo en cuatro frentes principales:
+El sistema cubre cuatro dominios funcionales principales:
 
-- **Recepcion**: alta, consulta, edicion y seguimiento inicial de ordenes.
-- **Produccion**: puesta en marcha del pedido, visualizacion de recetas e incremento de avance por linea.
+- **Recepcion**: registro, consulta, visualizacion y edicion de pedidos.
+- **Produccion**: toma de pedidos pendientes, visualizacion de recetas y seguimiento del avance por linea.
 - **Entrega**: control final del pedido listo, consulta del detalle y cierre como entregado o cancelado.
-- **Administracion y metricas**: mantenimiento de catalogos operativos y visualizacion de indicadores del negocio.
+- **Administracion y metricas**: mantenimiento de catalogos maestros y analitica operativa del negocio.
 
 Objetivos del producto:
 
-- Centralizar el ciclo operativo de una orden desde su registro hasta su entrega.
-- Reducir errores operativos entre las etapas de recepcion, cocina/produccion y despacho.
+- Centralizar el ciclo operativo desde la creacion del pedido hasta su entrega.
+- Reducir errores de coordinacion entre recepcion, produccion y entrega.
 - Dar visibilidad del estado real de cada pedido.
-- Facilitar la administracion de datos maestros como productos, categorias, ingredientes y estados.
-- Exponer metricas de facturacion, clientes, tiempos por estado y concentracion horaria de entregas.
+- Mantener productos, categorias, ingredientes y recetas desde una interfaz administrativa.
+- Exponer metricas de facturacion, tiempos operativos, clientes destacados, productos vendidos y rentabilidad.
 
 ### 2.2 Justificacion
 
-El proyecto responde a la necesidad de contar con una interfaz operativa unica para equipos que hoy dependen de informacion dispersa o procesos manuales. La aplicacion ordena el trabajo diario, hace mas trazable cada pedido y mejora la capacidad de control del negocio.
+Segun el BRD, el valor del sistema esta en registrar cada etapa del flujo de pedidos para generar informacion util para la operacion y para la toma de decisiones administrativas. El frontend materializa esa necesidad en tableros operativos y una capa administrativa que reemplaza trabajo disperso, consultas manuales y baja trazabilidad entre etapas.
 
 ### 2.3 Hipotesis
 
-- El negocio trabaja con un flujo de estados claramente diferenciados.
-- Las ordenes necesitan atravesar las etapas de recepcion, produccion y entrega.
-- El backend ya expone o expondra los recursos necesarios para ordenes, catalogos, recetas y metricas.
-- Los usuarios operativos requieren pantallas simples, rapidas y orientadas a la tarea.
+- El negocio opera sobre un flujo de estados reconocibles y consistentes.
+- Cada pedido atraviesa recepcion, produccion y entrega, incluso cuando alguna etapa sea muy breve.
+- El backend expone o seguira exponiendo recursos para ordenes, lineas, clientes, estados, catalogos, recetas, movimientos de stock y metricas.
+- La mejora del registro operativo permitira detectar cuellos de botella, horarios pico y oportunidades de optimizacion.
 
 ### 2.4 Restricciones
 
-- El frontend depende de la disponibilidad y consistencia de la API.
-- La logica de transicion entre estados se apoya parcialmente en nombres de estados devueltos por backend.
-- Algunas metricas avanzadas, como margen o ganancias vs costos, aun no cuentan con endpoint dedicado.
-- El alcance actual visible en el repositorio no incluye autenticacion, autorizacion por rol ni auditoria historica.
+- El frontend depende fuertemente de la disponibilidad y consistencia de la API.
+- La resolucion de estados operativos se apoya en nombres devueltos por backend, no en una configuracion desacoplada del cliente.
+- La gestion por estaciones de trabajo mencionada en el BRD no esta implementada en la interfaz actual.
+- El frontend actual no expone autenticacion, autorizacion por rol, motivo de cancelacion ni historial de cambios de estado.
+- Algunos componentes administrativos existen en codigo pero no estan publicados en la navegacion actual.
 
 ### 2.5 Dependencias
 
-- API REST para ordenes, lineas de orden, clientes, productos, estados, recetas y metricas.
-- Configuracion correcta de estados operativos como `pendiente`, `en produccion`, `listo`, `entregado` y `cancelado`.
-- Catalogos administrativos cargados: categorias, productos, ingredientes, tipos de movimiento de stock y metodos de pago.
-- Datos de recetas por producto para enriquecer la vista de produccion.
+- API REST para ordenes, lineas de orden, clientes, categorias, ingredientes, productos, recetas y estados.
+- API REST para tipos de movimiento de stock y movimientos de stock.
+- API REST de metricas para facturacion total, concentracion horaria de entregas, tiempos promedio por estado, detalle por estado, costo/ganancia y productos mas vendidos.
+- Configuracion correcta de estados operativos equivalentes a `pendiente`, `en produccion`, `listo`, `entregado` y `cancelado`.
+- Configuracion correcta de tipos de movimiento de stock equivalentes a `en_produccion`, `entregado` y `cancelado_con_perdida`.
 
-### 2.6 Alcance funcional
+### 2.6 Alcance funcional del proyecto
 
-Incluido en el alcance actual:
+Incluido en el alcance actual observable:
 
-- Crear, consultar y editar ordenes.
-- Buscar ordenes por cliente o numero.
-- Visualizar ordenes agrupadas por estado.
-- Iniciar la produccion de un pedido pendiente.
-- Consultar recetas e ingredientes por producto en produccion.
-- Marcar el avance de produccion por linea.
-- Completar o cancelar pedidos en produccion.
-- Visualizar pedidos listos para entrega.
-- Revisar detalle del pedido antes de despachar.
-- Marcar pedidos como entregados o cancelados en entrega.
-- Administrar entidades maestras desde el modulo administrativo.
-- Consultar metricas de negocio y tiempos operativos por rango de fechas.
+- Crear pedidos con cliente, entrega estimada, metodo de pago y productos.
+- Seleccionar clientes existentes y crear clientes nuevos desde el flujo de recepcion.
+- Buscar pedidos por nombre de cliente o numero de orden.
+- Ver pedidos agrupados por estados no finales.
+- Editar pedidos existentes.
+- Proteger al usuario frente a cambios sin guardar.
+- Tomar pedidos pendientes y moverlos a produccion.
+- Consultar ingredientes y cantidades de receta por producto.
+- Registrar avance de produccion por linea.
+- Completar pedidos de produccion y moverlos a listos.
+- Cancelar pedidos desde produccion o entrega.
+- Sincronizar movimientos de stock operativos al completar produccion, entregar o cancelar.
+- Gestionar categorias, ingredientes, productos y recetas desde el modulo administrativo.
+- Consultar metricas con rango de fechas opcional.
+- Analizar tiempos por estado con drilldown hasta el detalle de la orden.
+- Consultar costo, facturacion, ganancia, productos mas vendidos, clientes destacados y horarios de entrega.
 
-Fuera del alcance actual observado:
+Considerado por el BRD pero no resuelto en la interfaz actual:
 
-- Login y gestion de permisos.
+- Motivo obligatorio de cancelacion.
+- Restriccion de una orden en produccion por estacion de trabajo.
+- Historial visible de transiciones de estado con fecha y hora.
+- Publicacion en navegacion de ABM de estados y tipos de movimiento de stock.
+
+Fuera del alcance actual visible:
+
+- Login y gestion de permisos por rol.
 - Notificaciones automaticas a clientes.
-- Integracion nativa con WhatsApp o pasarelas de pago.
-- Gestion de stock en tiempo real dentro del flujo operativo.
-- Reportes de rentabilidad basados en costo real por pedido.
+- Integracion nativa con WhatsApp.
+- Pasarela de pago o cobro online.
+- Auditoria completa de acciones de usuario.
 
 ## 3. Informacion de requerimientos de negocio
 
 ### 3.1 Reglas de negocio
 
-1. Toda orden debe tener un cliente valido, fecha/hora estimada de entrega, metodo de pago, estado y al menos una linea de producto.
-2. Una orden no puede guardarse con productos inexistentes o cantidades no positivas.
-3. La recepcion trabaja sobre estados no finales.
-4. Produccion solo puede operar correctamente si existen estados reconocibles para pendiente, en produccion, listo y cancelado.
-5. Entrega solo puede operar correctamente si existen estados reconocibles para listo, entregado y cancelado.
-6. Un pedido puede pasar de pendiente a en produccion desde el tablero de produccion.
-7. Un pedido solo puede completarse en produccion cuando todas sus lineas alcanzan la cantidad requerida.
-8. Un pedido puede cancelarse tanto desde produccion como desde entrega.
-9. La vista de produccion debe mostrar la receta asociada a cada producto cuando exista.
-10. Las metricas deben poder filtrarse por rango de fechas cuando el backend lo soporte.
-11. El dashboard debe mostrar valores agregados del negocio y permitir analizar cuellos de botella por estado.
-12. Los cambios sobre ordenes deben refrescar el resto de vistas operativas mediante eventos del cliente (`orders:changed`).
+| ID | Regla | Estado en frontend |
+| --- | --- | --- |
+| RN-REC-01 | Toda orden debe tener un cliente valido asociado. | Implementado |
+| RN-REC-02 | Toda orden debe contener al menos un producto con cantidad positiva. | Implementado |
+| RN-REC-03 | Toda orden debe registrar entrega estimada y metodo de pago antes de guardarse. | Implementado |
+| RN-REC-04 | Las nuevas ordenes se crean con un estado inicial configurado por defecto. | Implementado |
+| RN-REC-05 | La busqueda en recepcion debe permitir localizar pedidos por cliente o numero ignorando mayusculas y tildes. | Implementado |
+| RN-REC-06 | En la edicion actual de pedidos el cliente no se modifica desde la interfaz. | Implementado |
+| RN-PRD-01 | Solo deben entrar a produccion pedidos reconocidos como pendientes. | Implementado, dependiente del naming de estados |
+| RN-PRD-02 | La interfaz debe mostrar cola de pendientes y pedidos activos en produccion. | Implementado |
+| RN-PRD-03 | Un pedido solo puede marcarse como listo cuando todas sus lineas alcanzan la cantidad requerida. | Implementado |
+| RN-PRD-04 | Al completar produccion debe sincronizarse el movimiento de stock operativo antes de cerrar el pedido. | Implementado |
+| RN-PRD-05 | Debe poder consultarse la receta asociada a cada producto durante produccion. | Implementado |
+| RN-PRD-06 | La regla del BRD "una orden por estacion de trabajo" no esta modelada en el frontend actual. | Pendiente |
+| RN-ENT-01 | Solo deben aparecer en entrega las ordenes reconocidas como listas. | Implementado |
+| RN-ENT-02 | Desde entrega debe poder cerrarse un pedido como entregado o cancelado. | Implementado |
+| RN-ENT-03 | Entrega y cancelacion final deben sincronizar el movimiento de stock correspondiente. | Implementado |
+| RN-EST-01 | Todo pedido debe tener un estado valido dentro del flujo operativo. | Implementado, con dependencia de backend |
+| RN-EST-02 | Los pedidos entregados o cancelados no deben figurar en tableros operativos de recepcion, produccion o entrega. | Implementado |
+| RN-EST-03 | El flujo secuencial y el registro historico de fecha/hora por transicion pertenecen al dominio pero no tienen visualizacion dedicada en este frontend. | Parcial |
+| RN-EST-04 | El motivo de cancelacion mencionado en el BRD no se captura en la interfaz actual. | Pendiente |
+| RN-CAT-01 | El sistema debe permitir administrar categorias, ingredientes y productos. | Implementado |
+| RN-CAT-02 | La receta de un producto se administra dentro del ABM de productos. | Implementado |
+| RN-CAT-03 | Los ingredientes deben conservar nombre, unidad de medida y costo. | Implementado |
+| RN-CAT-04 | Existen componentes para ABM de estados y tipos de movimiento de stock, pero hoy no estan expuestos en rutas funcionales. | Parcial |
+| RN-MET-01 | El sistema debe permitir consultar metricas relacionadas al flujo de pedidos. | Implementado |
+| RN-MET-02 | Las metricas deben permitir filtro por rango de fechas o usar el rango por defecto del backend. | Implementado |
+| RN-MET-03 | La informacion debe presentarse de forma clara y permitir detectar rendimientos y cuellos de botella. | Implementado |
+| RN-MET-04 | El analisis de tiempos debe permitir profundizar desde estado hacia detalle de orden. | Implementado |
 
 ### 3.2 Casos de negocio principales
 
 #### Caso 1. Alta de pedido en recepcion
 
-El operador de recepcion selecciona o crea un cliente, define entrega estimada, metodo de pago, estado inicial y agrega productos. El sistema valida la informacion minima y crea la orden.
+El operador selecciona un cliente existente o crea uno nuevo, define entrega estimada, medio de pago y productos. El sistema valida la informacion minima, calcula el total y crea la orden.
 
 #### Caso 2. Edicion de pedido existente
 
-El operador abre una orden existente, ajusta datos generales o lineas y guarda los cambios. Si intenta salir con cambios sin persistir, el sistema solicita confirmacion.
+El operador abre una orden desde recepcion, ajusta productos o datos operativos y guarda los cambios. Si intenta salir sin guardar, el sistema solicita confirmacion.
 
 #### Caso 3. Inicio de produccion
 
-Desde el tablero de pendientes, el operador de produccion toma un pedido y lo mueve a estado en produccion para comenzar su preparacion.
+El operador de produccion toma un pedido pendiente y lo mueve al estado operativo de produccion para comenzar su preparacion.
 
 #### Caso 4. Preparacion por linea
 
-El operador consulta los productos del pedido, revisa ingredientes por receta e incrementa el avance por linea hasta completar las cantidades requeridas.
+Durante la produccion, el operador consulta la receta de cada producto, revisa ingredientes y registra avance por linea hasta completar la cantidad solicitada.
 
 #### Caso 5. Cierre de produccion
 
-Una vez completadas todas las lineas, el sistema habilita el cierre del pedido como listo para entrega.
+Cuando todas las lineas estan completas, el sistema sincroniza el movimiento de stock operativo y deja la orden en estado listo.
 
-#### Caso 6. Despacho del pedido
+#### Caso 6. Entrega o cancelacion final
 
-El operador de entrega selecciona un pedido listo, revisa el detalle del cliente y las lineas del pedido, y lo marca como entregado o cancelado.
+El operador de entrega revisa el detalle del pedido listo y lo marca como entregado o cancelado. En ambos casos se actualiza el movimiento de stock correspondiente.
 
-#### Caso 7. Administracion de catalogos
+#### Caso 7. Mantenimiento de catalogos
 
-Un usuario administrativo mantiene categorias, estados, ingredientes, productos y otros catalogos necesarios para la operacion.
+El usuario administrativo gestiona categorias, ingredientes y productos. Para productos puede ademas cargar o modificar su receta con ingredientes y cantidades.
 
 #### Caso 8. Analisis operativo
 
-Un usuario administrativo consulta metricas de facturacion, ticket promedio, clientes frecuentes, horarios de entrega y tiempos promedio por estado para detectar desbalances operativos.
+El usuario administrativo consulta indicadores de negocio, concentra la lectura por periodo y profundiza en tiempos promedio por estado hasta llegar a una orden puntual.
 
 ## 4. Requerimientos funcionales
 
 ### 4.1 Historias de usuario
 
-#### RF-01 Recepcion de pedidos
+#### Recepcion
 
-Como operador de recepcion, quiero ver las ordenes agrupadas por estado, para identificar rapidamente que pedidos debo revisar o actualizar.
+- **RF-01** Como operador de recepcion, quiero ver pedidos agrupados por estado, para organizar mi trabajo diario.
+- **RF-02** Como operador de recepcion, quiero buscar pedidos por cliente o numero, para encontrar rapidamente una orden puntual.
+- **RF-03** Como operador de recepcion, quiero seleccionar un cliente existente desde un modal de busqueda, para iniciar la carga del pedido sin salir del flujo.
+- **RF-04** Como operador de recepcion, quiero crear un cliente nuevo desde el mismo flujo de pedido, para no depender de otra pantalla administrativa.
+- **RF-05** Como operador de recepcion, quiero crear una orden con entrega estimada, pago y productos, para registrar una venta completa.
+- **RF-06** Como operador de recepcion, quiero editar una orden existente, para corregir cantidades, productos o datos operativos.
+- **RF-07** Como operador, quiero recibir una advertencia si intento salir con cambios sin guardar, para evitar perdida de trabajo.
+- **RF-08** Como operador, quiero ver el total acumulado del pedido mientras lo edito, para validar el resumen antes de guardar.
 
-#### RF-02 Busqueda de pedidos
+#### Produccion
 
-Como operador de recepcion, quiero buscar ordenes por cliente o numero, para encontrar un pedido puntual sin recorrer toda la lista.
+- **RF-09** Como operador de produccion, quiero ver la cola de pedidos pendientes y los pedidos activos, para priorizar preparacion.
+- **RF-10** Como operador de produccion, quiero iniciar la produccion de un pedido pendiente, para comenzar su elaboracion.
+- **RF-11** Como operador de produccion, quiero consultar la receta e ingredientes de cada producto, para preparar correctamente la orden.
+- **RF-12** Como operador de produccion, quiero registrar el avance por linea, para reflejar cuantas unidades ya fueron preparadas.
+- **RF-13** Como operador de produccion, quiero cerrar un pedido como listo solo cuando todas sus lineas esten completas, para no derivar ordenes incompletas.
+- **RF-14** Como operador de produccion, quiero cancelar un pedido desde mi tablero, para resolver incidencias operativas.
 
-#### RF-03 Alta de pedido
+#### Entrega
 
-Como operador de recepcion, quiero crear una orden con cliente, metodo de pago, horario estimado y productos, para registrar correctamente una venta.
+- **RF-15** Como operador de entrega, quiero ver los pedidos listos con su detalle, para verificar cliente, pago y lineas antes del cierre.
+- **RF-16** Como operador de entrega, quiero marcar un pedido como entregado, para cerrar correctamente el flujo operativo.
+- **RF-17** Como operador de entrega, quiero cancelar un pedido listo, para reflejar una anulacion de ultima instancia.
 
-#### RF-04 Edicion de pedido
+#### Administracion
 
-Como operador de recepcion, quiero editar una orden existente, para corregir datos o ajustar productos antes de su procesamiento.
+- **RF-18** Como usuario administrativo, quiero gestionar categorias, para mantener organizado el catalogo.
+- **RF-19** Como usuario administrativo, quiero gestionar ingredientes con unidad y costo, para sostener recetas y analitica economica.
+- **RF-20** Como usuario administrativo, quiero gestionar productos y su receta, para definir correctamente la composicion de cada item vendido.
 
-#### RF-05 Proteccion ante cambios sin guardar
+#### Metricas
 
-Como operador, quiero recibir una advertencia si intento salir de una pantalla con cambios sin guardar, para evitar perder trabajo por error.
-
-#### RF-06 Inicio de produccion
-
-Como operador de produccion, quiero tomar un pedido pendiente y moverlo a produccion, para comenzar su preparacion.
-
-#### RF-07 Visualizacion de receta
-
-Como operador de produccion, quiero ver la receta e ingredientes de cada producto, para preparar el pedido sin depender de consultas externas.
-
-#### RF-08 Registro de avance
-
-Como operador de produccion, quiero incrementar la cantidad preparada por linea, para reflejar el progreso real del pedido.
-
-#### RF-09 Cierre de produccion
-
-Como operador de produccion, quiero completar un pedido solo cuando todas las lineas esten listas, para evitar enviar ordenes incompletas a entrega.
-
-#### RF-10 Entrega del pedido
-
-Como operador de despacho, quiero visualizar los pedidos listos y marcarlos como entregados, para cerrar el flujo operativo.
-
-#### RF-11 Cancelacion operativa
-
-Como operador, quiero poder cancelar un pedido desde produccion o entrega, para reflejar incidencias o anulaciones del negocio.
-
-#### RF-12 Administracion de catalogos
-
-Como usuario administrativo, quiero mantener entidades maestras del sistema, para que la operacion trabaje con datos actualizados.
-
-#### RF-13 Dashboard operativo
-
-Como usuario administrativo, quiero consultar metricas agregadas y analiticas por periodo, para tomar decisiones basadas en datos.
-
-#### RF-14 Analisis de tiempos por estado
-
-Como usuario administrativo, quiero analizar tiempos promedio por estado y profundizar hasta el detalle de una orden, para detectar cuellos de botella.
+- **RF-21** Como usuario administrativo, quiero ver un dashboard con facturacion, ticket promedio, clientes unicos y ordenes relevadas, para tener una lectura ejecutiva del negocio.
+- **RF-22** Como usuario administrativo, quiero filtrar metricas por rango de fechas o volver al rango por defecto, para comparar periodos.
+- **RF-23** Como usuario administrativo, quiero ver concentracion horaria de entregas, para detectar picos operativos.
+- **RF-24** Como usuario administrativo, quiero consultar clientes destacados y productos mas vendidos, para entender demanda y recurrencia.
+- **RF-25** Como usuario administrativo, quiero analizar tiempos promedio por estado y profundizar hasta una orden concreta, para detectar cuellos de botella reales.
+- **RF-26** Como usuario administrativo, quiero ver costo, ganancia y margen estimado, para evaluar rentabilidad operativa.
 
 ### 4.2 Criterios de aceptacion
 
 #### CA-01 Creacion de orden
 
-- Dado un formulario de orden vacio, cuando el usuario completa cliente, entrega estimada, metodo de pago, estado y al menos un producto valido, entonces el sistema permite guardar la orden.
-- Dado un formulario incompleto, cuando falta alguno de esos campos, entonces el sistema muestra un error y no envia la solicitud.
+- Dado un formulario vacio, cuando el usuario completa cliente, entrega estimada, metodo de pago y al menos un producto valido, entonces el sistema permite crear la orden.
+- Dado un formulario incompleto, cuando falta alguno de esos datos, entonces el sistema muestra un error y no envia la solicitud.
 
-#### CA-02 Validacion de lineas
+#### CA-02 Seleccion y alta de clientes
 
-- Dado un pedido con productos seleccionados, cuando una linea tiene producto invalido o cantidad no positiva, entonces el sistema bloquea la operacion.
-- Dado un producto ya agregado, cuando el usuario vuelve a seleccionarlo, entonces el sistema incrementa su cantidad en vez de duplicar la linea.
+- Dado el modal de clientes abierto, cuando el usuario busca por nombre o WhatsApp, entonces el sistema filtra coincidencias sobre la lista cargada.
+- Dado que el cliente no existe, cuando el usuario crea uno nuevo con nombre y WhatsApp numerico, entonces el sistema lo devuelve seleccionado al formulario de orden.
 
-#### CA-03 Navegacion con cambios sin guardar
+#### CA-03 Resumen de productos
 
-- Dado un usuario creando o editando una orden, cuando intenta salir con cambios sin persistir, entonces el sistema muestra un dialogo de confirmacion.
-- Dado que el usuario confirma descartar cambios, cuando continua la navegacion, entonces el sistema cambia de vista sin conservar ediciones temporales.
+- Dado un producto ya agregado, cuando el usuario vuelve a incorporarlo, entonces el sistema incrementa su cantidad en lugar de duplicar una linea nueva.
+- Dado un cambio de cantidad, cuando el usuario aumenta o reduce unidades, entonces el total del pedido se recalcula en el resumen.
 
-#### CA-04 Listado por estado en recepcion
+#### CA-04 Edicion y proteccion de cambios
 
-- Dado que existen estados operativos no finales, cuando la vista de recepcion carga correctamente, entonces el sistema muestra tabs o botones por estado.
-- Dado un estado seleccionado, cuando existen ordenes asociadas, entonces la vista lista solo las ordenes de ese estado.
+- Dado un pedido en edicion, cuando el usuario intenta salir con cambios sin guardar, entonces el sistema muestra un dialogo de confirmacion.
+- Dado un pedido en edicion, cuando el usuario consulta el formulario, entonces el cliente aparece bloqueado para modificacion en la interfaz actual.
 
-#### CA-05 Busqueda de ordenes
+#### CA-05 Listado por estado en recepcion
 
-- Dado un listado de ordenes, cuando el usuario escribe un cliente o numero, entonces la vista filtra coincidencias ignorando mayusculas y tildes.
-- Dado que no hay coincidencias, cuando finaliza la busqueda, entonces la vista informa que no se encontraron ordenes.
+- Dado que existen estados no finales, cuando carga recepcion, entonces el sistema muestra una vista segmentada por esos estados.
+- Dado un estado seleccionado, cuando existen ordenes asociadas, entonces la vista muestra solo los pedidos de ese estado.
 
-#### CA-06 Inicio de produccion
+#### CA-06 Busqueda operativa
 
-- Dado un pedido pendiente, cuando el operador lo selecciona en el tablero lateral, entonces el sistema intenta moverlo a produccion.
-- Dado que la transicion fue exitosa, cuando la operacion finaliza, entonces la orden deja de figurar como pendiente y aparece en produccion.
+- Dado un listado de pedidos, cuando el usuario escribe un nombre de cliente o numero de orden, entonces el sistema filtra coincidencias ignorando mayusculas y tildes.
+- Dado que no hay resultados, cuando finaliza la busqueda, entonces la vista informa que no se encontraron ordenes.
 
-#### CA-07 Produccion por linea
+#### CA-07 Inicio de produccion
 
-- Dado un pedido en produccion, cuando el operador incrementa una linea, entonces el sistema actualiza el contador de unidades preparadas.
-- Dado que una linea alcanza su cantidad requerida, cuando la vista se refresca, entonces la linea aparece como completa.
+- Dado un pedido pendiente y los estados correctamente configurados, cuando el operador lo toma, entonces la orden pasa a produccion y deja de figurar como pendiente.
+- Dado que el estado operativo no puede resolverse, cuando el operador intenta iniciar produccion, entonces el sistema informa un error de configuracion.
 
-#### CA-08 Recetas en produccion
+#### CA-08 Produccion por linea
 
-- Dado un producto con receta cargada, cuando el operador despliega su detalle, entonces el sistema muestra los ingredientes y cantidades.
-- Dado un producto sin receta, cuando el operador abre el detalle, entonces el sistema informa que aun no existe receta cargada.
+- Dado un pedido en produccion, cuando el operador incrementa una linea, entonces el contador no supera la cantidad requerida.
+- Dado un producto con receta cargada, cuando el operador expande su detalle, entonces el sistema muestra ingredientes y cantidades.
 
-#### CA-09 Completar pedido
+#### CA-09 Cierre de produccion
 
-- Dado un pedido en produccion, cuando no todas las lineas estan completas, entonces el boton de completar no debe cerrar el pedido.
-- Dado que todas las lineas estan completas, cuando el operador confirma el cierre, entonces el sistema mueve la orden al siguiente estado operativo de listo.
+- Dado un pedido con lineas incompletas, cuando el operador intenta cerrarlo, entonces la interfaz no debe considerarlo completo.
+- Dado un pedido completo, cuando el operador lo cierra, entonces el sistema sincroniza movimiento de stock `en_produccion` y luego cambia la orden a estado listo.
 
 #### CA-10 Entrega
 
-- Dado un pedido en estado listo, cuando el operador lo selecciona, entonces el sistema muestra cliente, whatsapp, medio de pago, total y lineas.
-- Dado que el operador confirma la entrega, cuando la operacion termina, entonces la orden cambia a estado entregado.
+- Dado un pedido listo, cuando el operador lo selecciona, entonces el sistema muestra cliente, WhatsApp, metodo de pago, total y lineas del pedido.
+- Dado que el operador confirma la entrega, cuando la operacion finaliza correctamente, entonces la orden cambia a estado entregado y se sincroniza el movimiento de stock correspondiente.
 
-#### CA-11 Cancelacion
+#### CA-11 Cancelacion operativa
 
-- Dado un pedido seleccionado, cuando el operador confirma la cancelacion desde produccion o entrega, entonces el sistema cambia la orden al estado cancelado.
+- Dado un pedido en produccion o listo, cuando el operador confirma la cancelacion, entonces el sistema cambia la orden a cancelado.
+- Dado que la cancelacion se hace desde entrega, cuando finaliza correctamente, entonces el movimiento de stock se sincroniza como `cancelado_con_perdida`.
 
-#### CA-12 Dashboard de metricas
+#### CA-12 ABM de productos y recetas
 
-- Dado que la API devuelve datos agregados, cuando el dashboard carga, entonces el sistema muestra facturacion total, ticket promedio, ordenes relevadas y clientes unicos.
-- Dado un rango de fechas valido, cuando el usuario lo aplica, entonces el dashboard vuelve a consultar las metricas sobre ese periodo.
+- Dado un producto nuevo o existente, cuando el usuario administrativo guarda el formulario, entonces el sistema persiste nombre, categoria, precio y receta asociada.
+- Dado un producto sin ingredientes de receta, cuando el usuario lo guarda, entonces el producto se puede persistir igualmente y la receta queda vacia o sin crear segun corresponda.
 
-#### CA-13 Tiempos por estado
+#### CA-13 ABM de ingredientes
 
-- Dado que existen metricas por estado, cuando el usuario selecciona un estado del grafico, entonces el sistema muestra el detalle de ocurrencias por orden.
-- Dado una ocurrencia seleccionada, cuando el usuario profundiza al detalle, entonces el sistema muestra la informacion completa de la orden relacionada.
+- Dado un ingrediente, cuando el usuario administrativo lo crea o edita, entonces el sistema valida costo numerico mayor o igual a cero y unidad de medida obligatoria.
+- Dado un ingrediente eliminado, cuando la API responde correctamente, entonces la grilla administrativa se refresca.
 
-#### CA-14 Configuracion de estados
+#### CA-14 Dashboard de metricas
 
-- Dado que la API no devuelve nombres de estados reconocibles, cuando carga la vista de produccion o entrega, entonces el sistema debe informar un error de configuracion operativa.
+- Dado que la API devuelve informacion agregada, cuando el dashboard carga, entonces el sistema muestra facturacion, ticket promedio, ordenes relevadas y clientes unicos.
+- Dado un rango de fechas valido, cuando el usuario lo aplica, entonces el dashboard vuelve a consultar sus fuentes con ese periodo.
+- Dado que el usuario reinicia el filtro, cuando selecciona "Usar default", entonces la pantalla vuelve a consultar el rango por defecto definido por backend.
+
+#### CA-15 Analisis de tiempos
+
+- Dado un grafico de tiempos promedio por estado, cuando el usuario selecciona un estado, entonces el sistema muestra sus ocurrencias por orden.
+- Dado el detalle de un estado, cuando el usuario selecciona una orden, entonces el sistema muestra el drilldown completo del pedido con cabecera, cliente y lineas.
 
 ## 5. Pantallas de usuario
 
-### 5.1 Pantallas operativas actuales
+### 5.1 Rutas activas actuales
 
 | Ruta | Modulo | Objetivo |
 | --- | --- | --- |
-| `/recepcion` | Recepcion | Gestionar ordenes por estado, buscar, crear, ver y editar. |
-| `/produccion` | Produccion | Tomar pedidos pendientes, producir por linea, revisar recetas y completar o cancelar. |
+| `/recepcion` | Recepcion | Ver pedidos por estado, buscar, crear, ver y editar. |
+| `/produccion` | Produccion | Tomar pedidos pendientes, registrar avance, revisar recetas y completar o cancelar. |
 | `/entrega` | Entrega | Revisar pedidos listos, inspeccionar detalle y cerrar como entregado o cancelado. |
-| `/administrativo` | Administrativo | Punto de entrada al modulo de catalogos. |
 | `/administrativo/categorias` | Administrativo | Gestion de categorias. |
-| `/administrativo/estados` | Administrativo | Gestion de estados operativos. |
-| `/administrativo/ingredientes` | Administrativo | Gestion de ingredientes. |
-| `/administrativo/productos` | Administrativo | Gestion de productos. |
-| `/administrativo/tipos-movimiento-stock` | Administrativo | Gestion de tipos de movimiento. |
-| `/administrativo/metricas` | Metricas | Dashboard operativo y analitico. |
+| `/administrativo/ingredientes` | Administrativo | Gestion de ingredientes con unidad y costo. |
+| `/administrativo/productos` | Administrativo | Gestion de productos, precio, categoria y receta. |
+| `/administrativo/metricas` | Metricas | Dashboard de indicadores operativos y analiticos. |
 
 ### 5.2 Componentes funcionales relevantes
 
-- Selector y alta de clientes dentro del flujo de orden.
-- Formularios de creacion y edicion de pedidos.
-- Dialogos de confirmacion para acciones destructivas o perdida de cambios.
-- Tableros de pendientes, produccion activa y pedidos listos.
-- Drilldown de metricas por estado y por orden.
+- Modal de seleccion de clientes con busqueda local.
+- Modal de alta rapida de clientes.
+- Formulario de alta y formulario de edicion de pedidos.
+- Dialogos de confirmacion para guardar, cancelar o descartar cambios.
+- Tablero de pendientes y tablero de produccion activa.
+- Vista de detalle para entrega.
+- Drilldown de metricas desde estado hacia orden.
 
-## 6. Requerimientos no funcionales observables
+### 5.3 Componentes preparados pero no publicados hoy en la navegacion
 
-1. La interfaz debe responder bien en desktop y mobile.
-2. Las operaciones sensibles deben confirmar acciones destructivas.
-3. Los errores de API deben mostrarse en lenguaje claro al usuario.
-4. El sistema debe reflejar cambios operativos sin recarga manual completa.
-5. La busqueda y navegacion de ordenes deben priorizar rapidez visual y baja friccion operativa.
+- Componente de gestion de estados operativos.
+- Componente de gestion de tipos de movimiento de stock.
 
-## 7. Riesgos y pendientes
+Observacion: las rutas `/administrativo/estados` y `/administrativo/tipos-movimiento-stock` redirigen actualmente a `/administrativo/categorias`, por lo que esas capacidades no estan disponibles para usuarios finales desde la navegacion actual.
 
-1. La deteccion de estados operativos depende del nombre textual de cada estado en backend.
-2. El dashboard identifica explicitamente una metrica faltante de ganancias vs costos, lo que bloquea analitica de margen real.
-3. No se observa en este frontend una capa de seguridad por roles, por lo que el control de acceso podria estar pendiente o resuelto fuera de este repositorio.
-4. La consistencia del flujo depende de que las APIs de ordenes, recetas y metricas mantengan contratos compatibles.
+## 6. Requerimientos no funcionales
+
+1. La interfaz debe responder correctamente en desktop y mobile.
+2. Los errores de API deben mostrarse en lenguaje claro para el usuario operativo.
+3. Las acciones sensibles deben confirmarse antes de ejecutarse.
+4. Los cambios en pedidos deben reflejarse en otras vistas operativas sin requerir recarga manual completa.
+5. El frontend debe tolerar variaciones menores en contratos de API mediante adaptadores y normalizacion de payloads.
+6. La experiencia debe priorizar velocidad operativa, bajo numero de clicks y lectura clara del estado del pedido.
+
+## 7. Brechas, riesgos y decisiones abiertas
+
+1. La deteccion de estados operativos depende de nombres textuales devueltos por backend.
+2. La sincronizacion de stock depende de que existan tipos de movimiento con naming exacto o compatible.
+3. El BRD habla de estaciones de trabajo en produccion, pero el frontend actual no modela esa entidad.
+4. El BRD pide motivo de cancelacion y registro temporal de cambios de estado; la interfaz actual no expone ninguno de los dos.
+5. Los ABM de estados y tipos de movimiento de stock existen en codigo, pero hoy no son accesibles desde la navegacion publicada.
+6. No se observa en este frontend control de acceso por roles ni autenticacion.
+7. La rentabilidad y el dashboard administrativo dependen de endpoints de metricas especificos; si esos contratos cambian, el modulo es especialmente sensible.
 
 ## 8. Glosario
 
 | Termino | Descripcion |
 | --- | --- |
 | Orden | Pedido registrado para un cliente, con productos, importe y estado. |
-| Linea de orden | Producto individual dentro de una orden con su cantidad y subtotal. |
-| Estado | Etapa operativa de una orden dentro del flujo del negocio. |
-| Recepcion | Modulo donde se registran y administran pedidos antes de produccion. |
-| Produccion | Modulo donde se prepara cada pedido y se controla el avance por linea. |
+| Linea de orden | Producto individual dentro de una orden con cantidad y subtotal. |
+| Estado | Etapa operativa del pedido dentro del flujo del negocio. |
+| Recepcion | Modulo donde se registran, consultan y editan pedidos. |
+| Produccion | Modulo donde se prepara la orden y se controla avance por linea. |
 | Entrega | Modulo donde se revisa y cierra el pedido listo para el cliente. |
-| Receta | Relacion de ingredientes necesarios para preparar un producto. |
+| Receta | Composicion de ingredientes y cantidades necesarias para un producto. |
+| Movimiento de stock | Registro operativo asociado a una orden en produccion, entrega o cancelacion. |
 | Dashboard | Vista consolidada de indicadores operativos y comerciales. |
-| Cuello de botella | Estado o tramo del flujo que concentra el mayor tiempo promedio por orden. |
+| Drilldown | Navegacion desde una metrica agregada hacia su detalle por estado u orden. |
 
 ## 9. Notas de trazabilidad
 
-Este documento fue construido con base en el estado actual del frontend disponible en el repositorio al **2026-05-23**. Describe principalmente el comportamiento observable en las rutas, hooks y servicios implementados, y marca como dependencias o pendientes aquellos puntos que hoy recaen en la API o no aparecen resueltos en el codigo del cliente.
+Este documento fue reconstruido tomando como fuentes:
+
+- El **BRD "Operations Management System" fechado el 2026-04-22**.
+- El **FRD de referencia** provisto por el usuario como modelo de estructura.
+- El **estado real del frontend** disponible en este repositorio al **2026-06-18**.
+
+Cuando el BRD y la implementacion actual no coinciden, este FRD distingue explicitamente:
+
+- lo **implementado hoy** en el frontend,
+- lo **parcialmente cubierto**,
+- y lo **pendiente o no visible** en la interfaz actual.
+
+El objetivo es que el documento sirva tanto como fotografia fiel del sistema construido hasta ahora como base de trabajo para los proximos incrementos funcionales.

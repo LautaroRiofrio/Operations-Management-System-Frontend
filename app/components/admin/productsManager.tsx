@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import ConfirmationDialog from '@/app/components/confirmationDialog';
 import { useConfirmationDialog } from '@/app/hooks/useConfirmationDialog';
 import { useCrudResource } from '@/app/hooks/useCrudResource';
@@ -71,6 +71,7 @@ function formatRecipeSummary(recipe: Recipe | undefined): string {
 
 export default function ProductsManager() {
   const [expandedProductId, setExpandedProductId] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const productsResource = useCrudResource(listProducts, 'No se pudieron cargar los productos.');
   const categoriesResource = useCrudResource(
     listCategories,
@@ -103,6 +104,17 @@ export default function ProductsManager() {
   const ingredients = ingredientsResource.items as Ingredient[];
   const recipes = recipesResource.items as Recipe[];
   const recipeByProductId = new Map(recipes.map((recipe) => [recipe.id_producto, recipe]));
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const normalizedSearchQuery = deferredSearchQuery.trim().toLocaleLowerCase('es-AR');
+  const filteredProducts =
+    normalizedSearchQuery.length > 0
+      ? productsResource.items.filter((product) => {
+          const categoryName = product.categoria?.nombre ?? '';
+          return `${product.nombre} ${categoryName}`
+            .toLocaleLowerCase('es-AR')
+            .includes(normalizedSearchQuery);
+        })
+      : productsResource.items;
 
   const resetForm = () => {
     setEditingId(null);
@@ -261,19 +273,33 @@ export default function ProductsManager() {
   return (
     <>
       <section className="min-h-0 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
-        <div className="flex flex-col items-start justify-between gap-4 border-b border-black/10 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
-          <div>
-            <p className="text-sm text-neutral-500">ABM conectado a la API</p>
-            <h2 className="text-2xl font-semibold text-neutral-900">Listado</h2>
+        <div className="border-b border-black/10 px-4 py-4 sm:px-5">
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-2xl font-semibold text-neutral-900">Listado</h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCreateClick}
+              className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-neutral-700"
+            >
+              Crear producto
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleCreateClick}
-            className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-neutral-700"
-          >
-            Crear producto
-          </button>
+          <div className="mt-4 flex justify-center">
+            <label className="w-full max-w-2xl">
+              <span className="sr-only">Buscar productos por nombre o categoria</span>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Buscar productos por nombre o categoria"
+                className="w-full rounded-full border border-black/10 bg-white px-5 py-3 text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
+              />
+            </label>
+          </div>
         </div>
 
         <div className="min-h-0 overflow-auto">
@@ -281,14 +307,18 @@ export default function ProductsManager() {
 
           {error ? <div className="p-5 text-sm text-red-600">{error}</div> : null}
 
-          {!loading && !error && productsResource.items.length === 0 ? (
-            <div className="p-5 text-sm text-neutral-600">Todavia no hay productos registrados.</div>
+          {!loading && !error && filteredProducts.length === 0 ? (
+            <div className="p-5 text-sm text-neutral-600">
+              {normalizedSearchQuery.length > 0
+                ? 'No se encontraron productos con ese nombre o categoria.'
+                : 'Todavia no hay productos registrados.'}
+            </div>
           ) : null}
 
-          {!loading && !error && productsResource.items.length > 0 ? (
+          {!loading && !error && filteredProducts.length > 0 ? (
             <>
               <div className="grid gap-3 p-4 lg:hidden">
-                {productsResource.items.map((product) => (
+                {filteredProducts.map((product) => (
                   <article key={product.id} className="rounded-2xl border border-black/10 bg-stone-50 p-4">
                     <button
                       type="button"
@@ -362,7 +392,7 @@ export default function ProductsManager() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/10">
-                  {productsResource.items.map((product) => (
+                  {filteredProducts.map((product) => (
                     <tr key={product.id} className="align-top">
                       <td className="px-5 py-4">{product.id}</td>
                       <td className="px-5 py-4">{product.nombre}</td>
@@ -407,7 +437,6 @@ export default function ProductsManager() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 sm:p-6">
           <div className="w-full max-w-3xl overflow-hidden rounded-3xl bg-white shadow-2xl">
             <div className="border-b border-black/10 px-6 py-5">
-              <p className="text-sm text-neutral-500">ABM conectado a la API</p>
               <h2 className="text-2xl font-semibold text-neutral-900">
                 {editingId === null ? 'Nuevo producto' : 'Editar producto'}
               </h2>

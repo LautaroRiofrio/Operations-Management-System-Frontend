@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Product from './product';
 import type { OrderProductCatalogProps } from '@/types';
 
@@ -14,6 +14,8 @@ const Products = ({
   selectedCategoryId,
   setSelectedCategoryId,
 }: OrderProductCatalogProps) => {
+  const categoriesScrollRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     if (selectedCategoryId === 'all') {
       return;
@@ -25,6 +27,16 @@ const Products = ({
     }
   }, [categories, selectedCategoryId, setSelectedCategoryId]);
 
+  useEffect(() => {
+    const container = categoriesScrollRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    container.scrollLeft = 0;
+  }, [categories]);
+
   const visibleProducts = products.filter((product) => {
     if (selectedCategoryId === 'all') {
       return true;
@@ -35,44 +47,49 @@ const Products = ({
 
   return (
     <div className="flex min-h-0 flex-col gap-5 rounded-3xl bg-regal-gris px-4 py-4 sm:px-5 sm:py-5 xl:h-full xl:overflow-hidden">
-      {/* titulo */}
       <div>
         <h2 className="text-2xl font-bold text-white">Productos</h2>
       </div>
-      {/* slider */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        <button
-          type="button"
-          onClick={() => setSelectedCategoryId('all')}
-          className={`whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${
-            selectedCategoryId === 'all'
-              ? 'bg-white text-neutral-900'
-              : 'bg-black/20 text-white hover:bg-black/30'
-          }`}
-        >
-          Todas
-        </button>
 
-        {categories.map((category) => (
+      <div
+        ref={categoriesScrollRef}
+        dir="ltr"
+        className="categories-scrollbar min-w-0 overflow-x-auto pb-2"
+      >
+        <div className="flex min-w-max justify-start gap-2">
           <button
-            key={category.id}
             type="button"
-            onClick={() => setSelectedCategoryId(category.id)}
+            onClick={() => setSelectedCategoryId('all')}
             className={`whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${
-              selectedCategoryId === category.id
+              selectedCategoryId === 'all'
                 ? 'bg-white text-neutral-900'
                 : 'bg-black/20 text-white hover:bg-black/30'
             }`}
           >
-            {category.nombre}
+            Todas
           </button>
-        ))}
+
+          {categories.map((category) => (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => setSelectedCategoryId(category.id)}
+              className={`whitespace-nowrap rounded-full px-4 py-2 text-sm transition ${
+                selectedCategoryId === category.id
+                  ? 'bg-white text-neutral-900'
+                  : 'bg-black/20 text-white hover:bg-black/30'
+              }`}
+            >
+              {category.nombre}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="flex flex-col flex-1 min-h-0 max-h-full  overflow-y-auto pr-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto pr-1">
         {loading ? (
           <div className="rounded-2xl bg-black/15 p-4 text-sm text-white/80">
-            Cargando productos y categorías...
+            Cargando productos y categorias...
           </div>
         ) : null}
 
@@ -91,7 +108,7 @@ const Products = ({
 
         {!loading && !error && visibleProducts.length === 0 ? (
           <div className="rounded-2xl bg-black/15 p-4 text-sm text-white/80">
-            No hay productos para la categoría seleccionada.
+            No hay productos para la categoria seleccionada.
           </div>
         ) : null}
 

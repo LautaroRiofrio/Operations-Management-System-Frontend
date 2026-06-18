@@ -18,7 +18,13 @@ export type OperationalStockMovementStatus =
   | 'entregado'
   | 'cancelado_con_perdida';
 
-const OPERATIONAL_MOVEMENT_TYPE_NAME = 'salida_operativa';
+const OPERATIONAL_MOVEMENT_TYPE_NAMES: Record<OperationalStockMovementStatus, string> = {
+  en_produccion: 'en_produccion',
+  entregado: 'entregado',
+  cancelado_con_perdida: 'cancelado_con_perdida',
+};
+
+const LEGACY_OPERATIONAL_MOVEMENT_TYPE_NAMES = new Set(['salida_operativa']);
 
 function normalizeText(value: string) {
   return value
@@ -63,37 +69,65 @@ function buildMovementPayload(
   };
 }
 
-async function ensureOperationalMovementType(): Promise<StockMovementType> {
+async function getOperationalMovementTypes() {
   const movementTypes = await listStockMovementTypes();
-  const normalizedTarget = normalizeText(OPERATIONAL_MOVEMENT_TYPE_NAME);
-  const existingType = movementTypes.find(
-    (movementType) => normalizeText(movementType.nombre) === normalizedTarget,
+  const movementTypesByName = new Map(
+    movementTypes.map((movementType) => [normalizeText(movementType.nombre), movementType]),
   );
 
-  if (existingType) {
-    return existingType;
+  const resolvedTypes = {
+    en_produccion: movementTypesByName.get(normalizeText(OPERATIONAL_MOVEMENT_TYPE_NAMES.en_produccion)) ?? null,
+    entregado: movementTypesByName.get(normalizeText(OPERATIONAL_MOVEMENT_TYPE_NAMES.entregado)) ?? null,
+    cancelado_con_perdida:
+      movementTypesByName.get(normalizeText(OPERATIONAL_MOVEMENT_TYPE_NAMES.cancelado_con_perdida)) ?? null,
+  } satisfies Record<OperationalStockMovementStatus, StockMovementType | null>;
+
+  return {
+    movementTypes,
+    resolvedTypes,
+  };
+}
+
+function ensureOperationalMovementType(
+  movementTypes: Record<OperationalStockMovementStatus, StockMovementType | null>,
+  status: OperationalStockMovementStatus,
+): StockMovementType {
+  const movementType = movementTypes[status];
+
+  if (movementType) {
+    return movementType;
   }
 
   throw new Error(
-    `No se encontro el tipo de movimiento de stock "${OPERATIONAL_MOVEMENT_TYPE_NAME}".`,
+    `No se encontro el tipo de movimiento de stock "${OPERATIONAL_MOVEMENT_TYPE_NAMES[status]}".`,
   );
 }
 
 async function findOrderOperationalMovement(
   orderId: number,
-  movementTypeId: number,
+  movementTypes: StockMovementType[],
 ): Promise<StockMovement | null> {
   let page = 1;
+  const allowedTypeIds = new Set(movementTypes.map((movementType) => movementType.id));
+  const legacyNames = new Set(
+    [...LEGACY_OPERATIONAL_MOVEMENT_TYPE_NAMES].map((movementTypeName) => normalizeText(movementTypeName)),
+  );
 
   while (page <= 20) {
     const response = await getStockMovements({
       page,
       pageSize: 100,
-      typeId: movementTypeId,
     });
 
     const foundMovement =
-      response.data.find((movement) => movement.id_order === orderId) ?? null;
+      response.data.find((movement) => {
+        const normalizedTypeName = normalizeText(movement.tipo_movimiento.nombre);
+
+        return (
+          movement.id_order === orderId &&
+          (allowedTypeIds.has(movement.id_tipo_movimiento) || legacyNames.has(normalizedTypeName))
+        );
+      }) ?? null;
 
     if (foundMovement) {
       return foundMovement;
@@ -114,9 +148,10 @@ async function upsertOperationalMovement(
   order: OrderDetail,
   status: OperationalStockMovementStatus,
 ) {
-  const movementType = await ensureOperationalMovementType();
+  const { movementTypes, resolvedTypes } = await getOperationalMovementTypes();
+  const movementType = ensureOperationalMovementType(resolvedTypes, status);
   const payload = buildMovementPayload(order, status);
-  const existingMovement = await findOrderOperationalMovement(order.id, movementType.id);
+  const existingMovement = await findOrderOperationalMovement(order.id, movementTypes);
 
   if (!existingMovement) {
     return createStockMovement({

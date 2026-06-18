@@ -46,3 +46,26 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+.categories-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.7) rgba(255, 255, 255, 0.18);
+}
+
+.categories-scrollbar::-webkit-scrollbar {
+  height: 10px;
+}
+
+.categories-scrollbar::-webkit-scrollbar-track {
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.categories-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.categories-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.85);
+}

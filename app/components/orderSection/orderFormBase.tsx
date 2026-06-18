@@ -216,8 +216,8 @@ export default function OrderFormBase({
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-5 p-4 sm:p-5 xl:h-full xl:max-h-full xl:min-h-0 xl:flex-row">
-        <div className="flex flex-1 min-h-0 flex-col gap-6 sm:gap-8">
+      <div className="flex min-w-0 flex-1 flex-col gap-5 p-4 sm:p-5 xl:h-full xl:max-h-full xl:min-h-0 xl:flex-row">
+        <div className="flex min-h-0 min-w-0 flex-1 basis-1/2 flex-col gap-6 sm:gap-8">
           {/* titulo */}
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row">
             <div>
@@ -289,7 +289,7 @@ export default function OrderFormBase({
         </div>
 
         {/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */}
-        <div className="flex min-h-0 flex-1 flex-col rounded-3xl bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex min-h-0 min-w-0 flex-1 basis-1/2 flex-col rounded-3xl bg-white p-4 shadow-sm sm:p-5">
           <div className="flex min-h-0 flex-col gap-5 xl:h-full">
             {/* Titulo */}
             <div className=''>

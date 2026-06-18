@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react';
+import { useDeferredValue, useState } from 'react';
 import ConfirmationDialog from '@/app/components/confirmationDialog';
 import { useConfirmationDialog } from '@/app/hooks/useConfirmationDialog';
 import type { CrudFormValues } from '@/types';
@@ -41,7 +41,10 @@ type CrudManagerProps<TItem> = {
   onCreate: (values: CrudFormValues) => Promise<void>;
   onDelete: (item: TItem) => Promise<void>;
   onUpdate: (id: number, values: CrudFormValues) => Promise<void>;
-  subtitle: string;
+  searchPlaceholder?: string;
+  getSearchText?: (item: TItem) => string;
+  searchEmptyMessage?: string;
+  subtitle?: string;
   title: string;
 };
 
@@ -65,6 +68,9 @@ export default function CrudManager<TItem>({
   onCreate,
   onDelete,
   onUpdate,
+  searchPlaceholder,
+  getSearchText,
+  searchEmptyMessage,
   subtitle,
   title,
 }: CrudManagerProps<TItem>) {
@@ -74,6 +80,7 @@ export default function CrudManager<TItem>({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const {
     askForConfirmation,
     closeConfirmation,
@@ -81,6 +88,21 @@ export default function CrudManager<TItem>({
     confirmation,
     isConfirming,
   } = useConfirmationDialog();
+  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const normalizedSearchQuery = deferredSearchQuery.trim().toLocaleLowerCase('es-AR');
+  const hasSearch = typeof getSearchText === 'function';
+  const filteredItems =
+    hasSearch && normalizedSearchQuery.length > 0
+      ? items.filter((item) =>
+          getSearchText(item)
+            .toLocaleLowerCase('es-AR')
+            .includes(normalizedSearchQuery),
+        )
+      : items;
+  const resolvedEmptyMessage =
+    hasSearch && normalizedSearchQuery.length > 0
+      ? (searchEmptyMessage ?? 'No se encontraron resultados para la busqueda.')
+      : emptyMessage;
 
   const resetForm = () => {
     setEditingId(null);
@@ -156,19 +178,36 @@ export default function CrudManager<TItem>({
   return (
     <>
       <section className="min-h-0 overflow-hidden rounded-2xl border border-black/10 bg-white shadow-sm">
-        <div className="flex flex-col items-start justify-between gap-4 border-b border-black/10 px-4 py-4 sm:flex-row sm:items-center sm:px-5">
-          <div>
-            <p className="text-sm text-neutral-500">{subtitle}</p>
-            <h2 className="text-2xl font-semibold text-neutral-900">Listado</h2>
+        <div className="border-b border-black/10 px-4 py-4 sm:px-5">
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              {subtitle ? <p className="text-sm text-neutral-500">{subtitle}</p> : null}
+              <h2 className="text-2xl font-semibold text-neutral-900">Listado</h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleCreateClick}
+              className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-neutral-700"
+            >
+              Crear {title.toLowerCase()}
+            </button>
           </div>
 
-          <button
-            type="button"
-            onClick={handleCreateClick}
-            className="rounded-xl bg-neutral-900 px-4 py-3 text-sm font-medium text-white transition hover:bg-neutral-700"
-          >
-            Crear {title.toLowerCase()}
-          </button>
+          {hasSearch ? (
+            <div className="mt-4 flex justify-center">
+              <label className="w-full max-w-2xl">
+                <span className="sr-only">Buscar en el listado</span>
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder={searchPlaceholder ?? `Buscar ${title.toLowerCase()}`}
+                  className="w-full rounded-full border border-black/10 bg-white px-5 py-3 text-sm text-neutral-900 outline-none transition placeholder:text-neutral-400 focus:border-neutral-400"
+                />
+              </label>
+            </div>
+          ) : null}
         </div>
 
         <div className="min-h-0 overflow-auto">
@@ -178,14 +217,14 @@ export default function CrudManager<TItem>({
 
           {error ? <div className="p-5 text-sm text-red-600">{error}</div> : null}
 
-          {!loading && !error && items.length === 0 ? (
-            <div className="p-5 text-sm text-neutral-600">{emptyMessage}</div>
+          {!loading && !error && filteredItems.length === 0 ? (
+            <div className="p-5 text-sm text-neutral-600">{resolvedEmptyMessage}</div>
           ) : null}
 
-          {!loading && !error && items.length > 0 ? (
+          {!loading && !error && filteredItems.length > 0 ? (
             <>
               <div className="grid gap-3 p-4 lg:hidden">
-                {items.map((item) => {
+                {filteredItems.map((item) => {
                   const itemId = getItemId(item);
 
                   return (
@@ -237,7 +276,7 @@ export default function CrudManager<TItem>({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/10">
-                  {items.map((item) => {
+                  {filteredItems.map((item) => {
                     const itemId = getItemId(item);
 
                     return (
@@ -280,7 +319,7 @@ export default function CrudManager<TItem>({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 sm:p-6">
           <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-2xl">
             <div className="border-b border-black/10 px-6 py-5">
-              <p className="text-sm text-neutral-500">{subtitle}</p>
+              {subtitle ? <p className="text-sm text-neutral-500">{subtitle}</p> : null}
               <h2 className="text-2xl font-semibold text-neutral-900">
                 {editingId === null ? `Nueva ${title.toLowerCase()}` : `Editar ${title.toLowerCase()}`}
               </h2>
